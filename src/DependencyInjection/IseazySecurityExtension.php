@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Iseazy\Security\DependencyInjection;
 
+use Iseazy\Security\Security\ApiKeyAuthenticator;
+use Iseazy\Security\Security\ApiKeyUserFactoryInterface;
+use Iseazy\Security\Security\IseazyUserInterface;
+use Iseazy\Security\Security\JwtAuthenticator;
+use Iseazy\Security\Security\JwtUserFactoryInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -21,9 +26,21 @@ class IseazySecurityExtension extends Extension
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../../config'));
         $loader->load('services.yaml');
 
-        $container->autowire(
-            'Iseazy\Security\Security\JwtAuthenticator',
-            'Iseazy\Security\Security\JwtAuthenticator'
-        )->addTag('security.authenticator');
+        // Configuración para autodetección
+        $container->registerForAutoconfiguration(JwtUserFactoryInterface::class)
+            ->addTag('iseazy.security.jwt_factory');
+
+        $container->registerForAutoconfiguration(ApiKeyUserFactoryInterface::class)
+            ->addTag('iseazy.security.apikey_factory');
+
+        // Registro de authenticators
+        $container->autowire(JwtAuthenticator::class)
+            ->setArgument('$idamUri', '%env(IDAM_URI)%')
+            ->setArgument('$expectedIssuerUri', '%env(IDAM_EXPECTED_ISSUER_URI)%')
+            ->addTag('security.authenticator');
+
+        $container->autowire(ApiKeyAuthenticator::class)
+            ->setArgument('$apiKey', '%env(API_KEY)%')
+            ->addTag('security.authenticator');
     }
 }

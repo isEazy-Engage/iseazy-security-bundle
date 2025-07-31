@@ -25,7 +25,7 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
     public function __construct(
         private string $idamUri,
         private string $expectedIssuerUri,
-        private IseazyUserInterface $userFactory
+        private JwtUserFactoryInterface $userFactory
     ) {
         $this->audience = $_ENV['IDAM_AUDIENCE'] ?? 'IsEazy';
     }
@@ -55,7 +55,7 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
         $payload = $decoded['payload'] ?? null;
 
         return new SelfValidatingPassport(
-            new UserBadge($payload['sub'], fn() => $this->userFactory->createUser($payload))
+            new UserBadge($payload['sub'], fn() => $this->userFactory->createFromJwtPayload($payload))
 
         );
     }

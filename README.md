@@ -51,12 +51,15 @@ security:
 ```
 4. Configura el proveedor de usuarios para usar el servicio de usuario de Iseazy:
 
-```phpnamespace App\Security;
+- Para JWT, implementa la interfaz `JwtUserFactoryInterface` y crea un servicio que devuelva el usuario basado en el
+  payload del JWT.
+
+```php
 
 use Iseazy\Security\Security\IseazyUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
-class MyUserFactory implements IseazyUserInterface
+class UserFactory implements JwtUserFactoryInterface
 {
     public function createUser(array $payload): UserInterface
     {
@@ -66,3 +69,28 @@ class MyUserFactory implements IseazyUserInterface
 }
 ```
 
+- Para API Key, implementa la interfaz `ApiKeyUserFactoryInterface` y crea un servicio que devuelva el usuario basado en
+  la clave API.
+
+```php
+use Iseazy\Security\Security\ApiKeyUserFactoryInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
+class ApiKeyUserFactory implements ApiKeyUserFactoryInterface
+{
+    public function createUser(string $apiKey): UserInterface
+    {
+        // Tu lógica para crear o cargar el usuario desde la clave API
+        return User::createFromApiKey($apiKey);
+    }
+}
+```
+
+5. Configura los servicios en tu archivo de configuración de servicios:
+
+```yaml
+    # Alias explícito para la interfaz JWT
+    Iseazy\Security\Security\JwtUserFactoryInterface: '@TaskBundle\Context\User\Domain\Entity\UserFactory'
+
+    # Alias explícito para la interfaz API Key
+    Iseazy\Security\Security\ApiKeyUserFactoryInterface: '@TaskBundle\Context\User\Domain\Entity\ApiKeyUserFactory'
+```

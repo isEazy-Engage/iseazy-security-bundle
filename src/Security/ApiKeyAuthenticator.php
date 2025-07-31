@@ -16,7 +16,7 @@ final class ApiKeyAuthenticator extends AbstractAuthenticator
 {
     public function __construct(
         private readonly string $apiKey,
-        private readonly IseazyUserInterface $userFactory
+        private readonly ApiKeyUserFactoryInterface $userFactory
 
     ) {
     }
@@ -37,7 +37,7 @@ final class ApiKeyAuthenticator extends AbstractAuthenticator
         }
 
         return new SelfValidatingPassport(
-            new UserBadge('api_key_user', fn() => $this->userFactory->createUser(null))
+            new UserBadge('api_key_user', fn() => $this->userFactory->createFromApiKey($apiKey))
         );
     }
 
