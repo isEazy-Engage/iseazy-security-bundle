@@ -26,14 +26,12 @@ class IseazySecurityExtension extends Extension
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../../config'));
         $loader->load('services.yaml');
 
-        // Configuración para autodetección
         $container->registerForAutoconfiguration(JwtUserFactoryInterface::class)
             ->addTag('iseazy.security.jwt_factory');
 
         $container->registerForAutoconfiguration(ApiKeyUserFactoryInterface::class)
             ->addTag('iseazy.security.apikey_factory');
 
-        // Registro de authenticators
         $container->autowire(JwtAuthenticator::class)
             ->setArgument('$idamUri', '%env(IDAM_URI)%')
             ->setArgument('$expectedIssuerUri', '%env(IDAM_EXPECTED_ISSUER_URI)%')
