@@ -1,0 +1,27 @@
+services:
+    TaskBundle\Context\User\Domain\Entity\UserFactory:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    TaskBundle\Context\User\Domain\Entity\ApiKeyUserFactory:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    Iseazy\Security\Security\JwtAuthenticator:
+        autowire: true
+        autoconfigure: true
+        public: false
+        arguments:
+            $idamUri: '%env(IDAM_URI)%'
+            $expectedIssuerUri: '%env(IDAM_EXPECTER_ISSUER_URI)%'
+            $userFactory: '@TaskBundle\Context\User\Domain\Entity\UserFactory'
+
+    Iseazy\Security\Security\ApiKeyAuthenticator:
+        autowire: true
+        autoconfigure: true
+        public: false
+        arguments:
+            $apiKey: '%env(API_KEY)%'
+            $userFactory: '@TaskBundle\Context\User\Domain\Entity\ApiKeyUserFactory'
