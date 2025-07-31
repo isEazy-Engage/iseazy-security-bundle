@@ -52,6 +52,8 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
             $decoded = $this->decode($token);
         } catch (\Exception $e) {
             throw new AuthenticationException('Invalid JWT Token');
+        } catch (\TypeError $e) {
+            throw new AuthenticationException('Invalid JWT Token' . $e->getMessage());
         }
         $payload = $decoded['payload'] ?? null;
 

@@ -28,8 +28,9 @@ final class ApiKeyAuthenticator extends AbstractAuthenticator
 
     public function authenticate(Request $request): SelfValidatingPassport
     {
-        $apiKey = $request->headers->get('X-API-Key');
-        if (!$request->headers->has('X-API-Key')) {
+
+        $apiKey = $request->headers->get('x-api-key');
+        if (!$request->headers->has('x-api-key')) {
             throw new AuthenticationException('No ApiKey provided');
         }
         if ($apiKey !== $this->apiKey) {
