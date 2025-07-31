@@ -1,6 +1,6 @@
 {
   "name": "iseazy/security",
-  "type": "library",
+  "type": "symfony-bundle",
   "version": "1.0.0",
   "autoload": {
     "psr-4": {

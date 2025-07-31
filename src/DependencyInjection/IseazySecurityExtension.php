@@ -20,5 +20,10 @@ class IseazySecurityExtension extends Extension
     {
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../../config'));
         $loader->load('services.yaml');
+
+        $container->autowire(
+            'Iseazy\Security\Security\JwtAuthenticator',
+            'Iseazy\Security\Security\JwtAuthenticator'
+        )->addTag('security.authenticator');
     }
 }
