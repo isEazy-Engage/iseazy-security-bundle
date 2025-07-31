@@ -12,12 +12,24 @@ Este paquete proporciona autenticadores para Symfony que permiten validar JWT em
 composer require iseazy/security
 ```
 
-2. Define el parámetro idam_uri en tu configuración para indicar la URL base de tu servidor de identidad::
+2. Define los parámetros necesarios en tu archivo de configuración:
+   Si usas jwt con keycloak, asegúrate de definir las variables de entorno necesarias en tu archivo `.env`:
+
+- IDAM_URI es la URL de tu servidor Keycloak.
+- IDAM_EXPECTER_ISSUER_URI es la URL de tu aplicación que espera el emisor del JWT.
+- IDAM_AUDIENCE es el público esperado del JWT. Si no esta definido, se usará el valor por defecto `IsEazy`.
+```
+# .env
+IDAM_URI=https://keycloak.example.com
+IDAM_EXPECTER_ISSUER_URI=http://localhost:8118
+IDAM_AUDIENCE=IsEazy
+```
+
+Si usas autenticación por API Key, define la clave en tu archivo `.env`:
 
 ```
-# config/packages/iseazy_security.yaml
-iseazy_security:
-  idam_uri: http://localhost:8118
+# .env
+API_KEY=your_api_key_here
 ```
 
 3. Configura el firewall en tu archivo de configuración de seguridad:
@@ -41,10 +53,10 @@ security:
 
 ```phpnamespace App\Security;
 
-use Iseazy\Security\Security\JwtUserFactoryInterface;
+use Iseazy\Security\Security\IseazyUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
-class MyUserFactory implements JwtUserFactoryInterface
+class MyUserFactory implements IseazyUserInterface
 {
     public function createUser(array $payload): UserInterface
     {
@@ -54,15 +66,3 @@ class MyUserFactory implements JwtUserFactoryInterface
 }
 ```
 
-5. Registra tu fábrica de usuarios como un servicio:
-
-```yaml
-# config/services.yaml
-ervices:
-  App\Security\MyUserFactory: ~
-
-  Iseazy\Security\Security\JwtAuthenticator:
-    arguments:
-      $idamUri: '%iseazy_security.idam_uri%'
-      $userFactory: '@App\Security\MyUserFactory'
-```# iseazy-security-bundle
