@@ -7,8 +7,9 @@ namespace Iseazy\Security\Security;
 
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
@@ -23,9 +24,9 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
     private string $audience;
 
     public function __construct(
-        private string $idamUri,
-        private string $expectedIssuerUri,
-        private JwtUserFactoryInterface $userFactory
+        private readonly string $idamUri,
+        private readonly string $expectedIssuerUri,
+        private readonly JwtUserFactoryInterface $userFactory
     ) {
         $this->audience = $_ENV['IDAM_AUDIENCE'] ?? 'IsEazy';
     }
@@ -64,11 +65,11 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
         Request $request,
         TokenInterface $token,
         string $firewallName
-    ): ?JsonResponse {
+    ): ?Response {
         return null;
     }
 
-    public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?JsonResponse
+    public function onAuthenticationFailure(Request $request, AuthenticationException $exception): JsonResponse
     {
         return new JsonResponse(['message' => $exception->getMessage(), 'code' => 401], 401);
     }

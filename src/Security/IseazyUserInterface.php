@@ -8,6 +8,5 @@ use Symfony\Component\Security\Core\User\UserInterface;
 
 interface IseazyUserInterface
 {
-    public function createUser(?array $payload): UserInterface;
 
 }

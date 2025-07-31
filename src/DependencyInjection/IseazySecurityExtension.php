@@ -6,7 +6,6 @@ namespace Iseazy\Security\DependencyInjection;
 
 use Iseazy\Security\Security\ApiKeyAuthenticator;
 use Iseazy\Security\Security\ApiKeyUserFactoryInterface;
-use Iseazy\Security\Security\IseazyUserInterface;
 use Iseazy\Security\Security\JwtAuthenticator;
 use Iseazy\Security\Security\JwtUserFactoryInterface;
 use Symfony\Component\Config\FileLocator;
@@ -21,7 +20,7 @@ class IseazySecurityExtension extends Extension
         return 'iseazy_security';
     }
 
-    public function load(array $configs, ContainerBuilder $container)
+    public function load(array $configs, ContainerBuilder $container): void
     {
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../../config'));
         $loader->load('services.yaml');
