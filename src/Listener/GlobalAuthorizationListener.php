@@ -34,7 +34,6 @@ final readonly class GlobalAuthorizationListener
             return;
         }
 
-
         if ($user instanceof JwtUserFactoryInterface) {
             $platformId = $request->query->get('platformId') ?? $request->query->get(
                 'platformUid'

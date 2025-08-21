@@ -63,7 +63,6 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
         }
 
 
-
         return new SelfValidatingPassport(
             new UserBadge($payload['sub'], fn() => $this->userFactory::createFromJwtPayload($payload))
 
