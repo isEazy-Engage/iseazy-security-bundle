@@ -16,29 +16,37 @@ final class ApiKeyAuthenticator extends AbstractAuthenticator
 {
     public function __construct(
         private readonly string $apiKey,
-        private readonly ApiKeyUserFactoryInterface $userFactory
-
+        private readonly string $userFactory
     ) {
     }
 
     public function supports(Request $request): ?bool
     {
-        return $request->headers->has('x-api-key');
+        return $request->headers->has('X-API-Key');
     }
 
     public function authenticate(Request $request): SelfValidatingPassport
     {
-
-        $apiKey = $request->headers->get('x-api-key');
-        if (!$request->headers->has('x-api-key')) {
+        $apiKey = $request->headers->get('X-API-Key');
+        if (!$request->headers->has('X-API-Key')) {
             throw new AuthenticationException('No ApiKey provided');
         }
         if ($apiKey !== $this->apiKey) {
             throw new AuthenticationException('Invalid API Key');
         }
 
+        if (!is_subclass_of($this->userFactory, ApiKeyUserFactoryInterface::class)) {
+            throw new \LogicException('invalid_user_key_entity_class', 500);
+        }
+
         return new SelfValidatingPassport(
-            new UserBadge('api_key_user', fn() => $this->userFactory->createFromApiKey($apiKey))
+            new UserBadge(
+                'api_key_user',
+                fn() => $this->userFactory::createFromApiKey(
+                    $apiKey,
+                    $request->query->get('platformId') ?? $request->query->get('platformUid')
+                )
+            )
         );
     }
 

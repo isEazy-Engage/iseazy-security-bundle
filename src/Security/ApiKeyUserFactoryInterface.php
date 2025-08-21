@@ -6,8 +6,10 @@ namespace Iseazy\Security\Security;
 
 use Symfony\Component\Security\Core\User\UserInterface;
 
-interface ApiKeyUserFactoryInterface extends IseazyUserInterface
+interface ApiKeyUserFactoryInterface extends UserInterface
 {
-    public function createFromApiKey(string $apiKey): UserInterface;
+    public static function createFromApiKey(string $apiKey, ?string $platformId): UserInterface;
+
+    public function getPlatformId(): ?string;
 
 }
