@@ -85,12 +85,10 @@ class ApiKeyUserFactory implements ApiKeyUserFactoryInterface
 }
 ```
 
-5. Configura los servicios en tu archivo de configuración de servicios:
+5. Le indicamos a Symfony que use estas clases como proveedores de usuarios en tu configuración de seguridad:
 
 ```yaml
-    # Alias explícito para la interfaz JWT
-    Iseazy\Security\Security\JwtUserFactoryInterface: '@TaskBundle\Context\User\Domain\Entity\UserFactory'
-
-    # Alias explícito para la interfaz API Key
-    Iseazy\Security\Security\ApiKeyUserFactoryInterface: '@TaskBundle\Context\User\Domain\Entity\ApiKeyUserFactory'
+    iseazy_security:
+        jwt_user_class: TaskBundle\Context\User\Domain\Entity\User
+        api_key_user_class: TaskBundle\Context\User\Domain\Entity\ApiKeyUser
 ```
