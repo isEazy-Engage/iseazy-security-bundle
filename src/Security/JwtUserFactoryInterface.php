@@ -6,8 +6,10 @@ namespace Iseazy\Security\Security;
 
 use Symfony\Component\Security\Core\User\UserInterface;
 
-interface JwtUserFactoryInterface extends IseazyUserInterface
+interface JwtUserFactoryInterface extends UserInterface
 {
-    public function createFromJwtPayload(array $payload): UserInterface;
+    public static function createFromJwtPayload(array $payload): UserInterface;
+
+    public function getPlatformId(): string;
 
 }

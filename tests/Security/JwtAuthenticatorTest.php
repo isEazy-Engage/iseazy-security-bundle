@@ -43,7 +43,11 @@ class JwtAuthenticatorTest extends TestCase
     public function testAuthenticateThrowsExceptionWhenNoAuthorizationHeader()
     {
         $userFactory = $this->createMock(JwtUserFactoryInterface::class);
-        $authenticator = new JwtAuthenticator('http://fake-keycloak.test', 'http://fake-keycloak.test', $userFactory);
+        $authenticator = new JwtAuthenticator(
+            'http://fake-keycloak.test',
+            'http://fake-keycloak.test',
+            $userFactory::class
+        );
 
         $request = new Request();
 
@@ -54,7 +58,11 @@ class JwtAuthenticatorTest extends TestCase
     public function testAuthenticateThrowsExceptionWhenHeaderMalformed()
     {
         $userFactory = $this->createMock(JwtUserFactoryInterface::class);
-        $authenticator = new JwtAuthenticator('http://fake-keycloak.test', 'http://fake-keycloak.test', $userFactory);
+        $authenticator = new JwtAuthenticator(
+            'http://fake-keycloak.test',
+            'http://fake-keycloak.test',
+            $userFactory::class
+        );
 
         $request = new Request();
         $request->headers->set('Authorization', 'Bearer'); // Sin token
@@ -68,7 +76,7 @@ class JwtAuthenticatorTest extends TestCase
         $userFactory = $this->createMock(JwtUserFactoryInterface::class);
         $userFactory->method('createFromJwtPayload')->willThrowException(new AuthenticationException());
 
-        $authenticator = new JwtAuthenticator('http://idam', 'http://issuer', $userFactory);
+        $authenticator = new JwtAuthenticator('http://idam', 'http://issuer', $userFactory::class);
 
         $request = new Request();
         $request->headers->set('Authorization', 'Bearer invalidtoken');
@@ -84,7 +92,7 @@ class JwtAuthenticatorTest extends TestCase
         $userFactory->method('createFromJwtPayload')->willReturn($user);
 
         $authenticator = $this->getMockBuilder(JwtAuthenticator::class)
-            ->setConstructorArgs(['http://fake-keycloak.test', 'http://fake-keycloak.test', $userFactory])
+            ->setConstructorArgs(['http://fake-keycloak.test', 'http://fake-keycloak.test', $userFactory::class])
             ->onlyMethods(['getJwks'])
             ->getMock();
 
