@@ -3,3 +3,8 @@ services:
         autowire: true
         autoconfigure: true
         public: false
+
+    Iseazy\Security\Listener\GlobalAuthorizationListener:
+        tags:
+            - { name: kernel.event_listener, event: kernel.request, priority: -100 }
+
