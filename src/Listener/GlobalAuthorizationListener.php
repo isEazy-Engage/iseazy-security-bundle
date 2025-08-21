@@ -26,6 +26,12 @@ final readonly class GlobalAuthorizationListener
 
         $request = $event->getRequest();
 
+        $firewallContext = $request->attributes->get('_firewall_context');
+
+        if ($firewallContext && $firewallContext !== 'security.firewall.map.context.api') {
+            return;
+        }
+
         $user = $this->security->getUser();
         if (!$user) {
             throw new AccessDeniedHttpException('user_not_authenticated');
