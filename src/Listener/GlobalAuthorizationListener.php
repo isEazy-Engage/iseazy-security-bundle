@@ -7,8 +7,10 @@ namespace Iseazy\Security\Listener;
 use Iseazy\Security\Security\ApiKeyUserFactoryInterface;
 use Iseazy\Security\Security\JwtUserFactoryInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\Uid\Uuid;
 
 final readonly class GlobalAuthorizationListener
 {
@@ -46,6 +48,11 @@ final readonly class GlobalAuthorizationListener
             );
             $userPlatformId = $user->getPlatformId();
             if ($platformId && $platformId !== $userPlatformId) {
+                try {
+                    $uuid = Uuid::fromString($platformId);
+                } catch (\InvalidArgumentException $e) {
+                    throw new BadRequestException('invalid_uuid', 400);
+                }
                 throw new AccessDeniedHttpException('invalid_platform_id', null, 403);
             }
             return;
