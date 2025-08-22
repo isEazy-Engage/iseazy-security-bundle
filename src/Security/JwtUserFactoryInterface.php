@@ -11,5 +11,4 @@ interface JwtUserFactoryInterface extends UserInterface
     public static function createFromJwtPayload(array $payload): UserInterface;
 
     public function getPlatformId(): string;
-
 }

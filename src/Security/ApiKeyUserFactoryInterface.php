@@ -11,5 +11,4 @@ interface ApiKeyUserFactoryInterface extends UserInterface
     public static function createFromApiKey(string $apiKey, ?string $platformId): UserInterface;
 
     public function getPlatformId(): ?string;
-
 }

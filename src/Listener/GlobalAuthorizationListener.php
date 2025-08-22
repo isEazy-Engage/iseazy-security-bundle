@@ -14,6 +14,7 @@ use Symfony\Component\Uid\Uuid;
 
 final readonly class GlobalAuthorizationListener
 {
+    private const API_FIREWALL = 'security.firewall.map.context.api';
 
     public function __construct(
         private Security $security
@@ -27,38 +28,47 @@ final readonly class GlobalAuthorizationListener
         }
 
         $request = $event->getRequest();
-
         $firewallContext = $request->attributes->get('_firewall_context');
 
-        if ($firewallContext && $firewallContext !== 'security.firewall.map.context.api') {
+        if ($firewallContext !== null && $firewallContext !== self::API_FIREWALL) {
             return;
         }
 
+        $platformId = $request->query->get('platformId') ?? $request->query->get('platformUid');
+        if ($platformId !== null) {
+            $this->assertValidUuid($platformId);
+        }
+
         $user = $this->security->getUser();
-        if (!$user) {
+        if ($user === null) {
             throw new AccessDeniedHttpException('user_not_authenticated');
         }
+
         if ($user instanceof ApiKeyUserFactoryInterface) {
             return;
         }
 
         if ($user instanceof JwtUserFactoryInterface) {
-            $platformId = $request->query->get('platformId') ?? $request->query->get(
-                'platformUid'
-            );
-            $userPlatformId = $user->getPlatformId();
-            if ($platformId && $platformId !== $userPlatformId) {
-                try {
-                    $uuid = Uuid::fromString($platformId);
-                } catch (\InvalidArgumentException $e) {
-                    throw new BadRequestException('invalid_uuid', 400);
-                }
-                throw new AccessDeniedHttpException('invalid_platform_id', null, 403);
-            }
+            $this->assertJwtPlatformAccess($platformId, $user->getPlatformId());
             return;
         }
 
         throw new AccessDeniedHttpException('user_not_supported', null, 403);
     }
-}
 
+    private function assertValidUuid(string $uuid): void
+    {
+        try {
+            Uuid::fromString($uuid);
+        } catch (\InvalidArgumentException) {
+            throw new BadRequestException('invalid_uuid');
+        }
+    }
+
+    private function assertJwtPlatformAccess(?string $requestedPlatformId, string $userPlatformId): void
+    {
+        if ($requestedPlatformId !== null && $requestedPlatformId !== $userPlatformId) {
+            throw new AccessDeniedHttpException('invalid_platform_id', null, 403);
+        }
+    }
+}

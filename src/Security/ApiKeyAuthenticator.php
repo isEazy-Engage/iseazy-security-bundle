@@ -6,6 +6,7 @@ namespace Iseazy\Security\Security;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -18,6 +19,15 @@ final class ApiKeyAuthenticator extends AbstractAuthenticator
         private readonly string $apiKey,
         private readonly string $userFactory
     ) {
+        if (!is_subclass_of($userFactory, ApiKeyUserFactoryInterface::class)) {
+            throw new \LogicException(
+                sprintf(
+                    'The class "%s" must implement %s.',
+                    $userFactory,
+                    ApiKeyUserFactoryInterface::class
+                )
+            );
+        }
     }
 
     public function supports(Request $request): ?bool
@@ -28,23 +38,22 @@ final class ApiKeyAuthenticator extends AbstractAuthenticator
     public function authenticate(Request $request): SelfValidatingPassport
     {
         $apiKey = $request->headers->get('X-API-Key');
-        if (!$request->headers->has('X-API-Key')) {
-            throw new AuthenticationException('No ApiKey provided');
-        }
-        if ($apiKey !== $this->apiKey) {
-            throw new AuthenticationException('Invalid API Key');
+        if ($apiKey === null) {
+            throw new CustomUserMessageAuthenticationException('No API Key provided');
         }
 
-        if (!is_subclass_of($this->userFactory, ApiKeyUserFactoryInterface::class)) {
-            throw new \LogicException('invalid_user_key_entity_class', 500);
+        if ($apiKey !== $this->apiKey) {
+            throw new CustomUserMessageAuthenticationException('Invalid API Key');
         }
+
+        $platformId = $request->query->get('platformId') ?? $request->query->get('platformUid');
 
         return new SelfValidatingPassport(
             new UserBadge(
                 'api_key_user',
                 fn() => $this->userFactory::createFromApiKey(
                     $apiKey,
-                    $request->query->get('platformId') ?? $request->query->get('platformUid')
+                    $platformId
                 )
             )
         );
@@ -62,6 +71,7 @@ final class ApiKeyAuthenticator extends AbstractAuthenticator
         Request $request,
         AuthenticationException $exception
     ): ?JsonResponse {
-        return new JsonResponse(['message' => 'Unauthorized', 'code' => 401], 401);
+        return new JsonResponse(['message' => 'Unauthorized', 'code' => JsonResponse::HTTP_UNAUTHORIZED],
+            JsonResponse::HTTP_UNAUTHORIZED);
     }
 }

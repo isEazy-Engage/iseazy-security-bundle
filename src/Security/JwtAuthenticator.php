@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Iseazy\Security\Security;
 
-
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
 use Symfony\Component\HttpFoundation\Request;
@@ -12,6 +11,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
+use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
@@ -20,7 +21,6 @@ use UnexpectedValueException;
 
 class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEntryPointInterface
 {
-
     private string $audience;
 
     public function __construct(
@@ -28,46 +28,42 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
         private readonly string $expectedIssuerUri,
         private readonly string $userFactory
     ) {
+        if (!is_subclass_of($userFactory, JwtUserFactoryInterface::class)) {
+            throw new \LogicException(
+                sprintf(
+                    'The class "%s" must implement %s.',
+                    $userFactory,
+                    JwtUserFactoryInterface::class
+                )
+            );
+        }
+
         $this->audience = $_ENV['IDAM_AUDIENCE'] ?? 'IsEazy';
     }
 
     public function supports(Request $request): ?bool
     {
-        return $request->headers->has('Authorization');
+        $authHeader = $request->headers->get('Authorization');
+        return $authHeader && str_starts_with($authHeader, 'Bearer ');
     }
 
     public function authenticate(Request $request): SelfValidatingPassport
     {
-        if (!$request->headers->has('Authorization')) {
-            throw new AuthenticationException('No token provided');
-        }
-        $authHeader = $request->headers->get('Authorization');
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
-            throw new AuthenticationException('No token provided');
-        }
-
-        $token = substr($authHeader, 7);
-
+        $token = substr($request->headers->get('Authorization'), 7);
         try {
-            $decoded = $this->decode($token);
-        } catch (\Exception $e) {
-            throw new AuthenticationException('Invalid JWT Token');
-        } catch (\TypeError $e) {
-            throw new AuthenticationException('Invalid JWT Token' . $e->getMessage());
+            $payload = $this->decodeAndValidate($token);
+        } catch (\Throwable $e) {
+            throw new CustomUserMessageAuthenticationException('Invalid JWT Token');
         }
-        $payload = $decoded['payload'] ?? null;
-
-
-        if (!is_subclass_of($this->userFactory, JwtUserFactoryInterface::class)) {
-            throw new \LogicException('invalid_user_entity_class', 500);
-        }
-
 
         return new SelfValidatingPassport(
-            new UserBadge($payload['sub'], fn() => $this->userFactory::createFromJwtPayload($payload))
-
+            new UserBadge(
+                $payload['sub'] ?? '',
+                fn() => $this->userFactory::createFromJwtPayload($payload)
+            )
         );
     }
+
 
     public function onAuthenticationSuccess(
         Request $request,
@@ -79,34 +75,10 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): JsonResponse
     {
-        return new JsonResponse(['message' => $exception->getMessage(), 'code' => 401], 401);
+        return new JsonResponse(['message' => $exception->getMessage(), 'code' => JsonResponse::HTTP_UNAUTHORIZED],
+            JsonResponse::HTTP_UNAUTHORIZED);
     }
 
-    /**
-     * Decode the JWT token and validate it.
-     *
-     * @param string $token The JWT token to decode.
-     * @return array An array containing the decoded payload and headers.
-     * @throws UnexpectedValueException If the token is invalid or expired.
-     */
-    private function decode(string $token): array
-    {
-        $jwks = $this->getJwks();
-
-        $headers = new \StdClass();
-        $decoded = JWT::decode(
-            $token,
-            JWK::parseKeySet($jwks),
-            $headers
-        );
-
-        $this->validateToken($decoded);
-
-        return [
-            'payload' => json_decode(json_encode($decoded), true),
-            'headers' => json_decode(json_encode($headers), true),
-        ];
-    }
 
     private function validateToken(\stdClass $decoded): void
     {
@@ -124,28 +96,43 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
         }
     }
 
+    private function decodeAndValidate(string $token): array
+    {
+        $jwks = $this->fetchJwks();
+
+        $decoded = JWT::decode($token, JWK::parseKeySet($jwks));
+
+        $this->validateToken($decoded);
+
+        return get_object_vars($decoded);
+    }
 
     protected function getIssuerCertKeycloak(): string
     {
         return $this->expectedIssuerUri . '/realms/' . $this->audience;
     }
 
-    protected function getJwks(): array
+    protected function fetchJwks(): array
     {
-        return json_decode(
-            file_get_contents($this->getUrlCertsKeycloak()),
-            true,
-            512
-        );
-    }
+        $url = $this->idamUri . '/realms/' . $this->audience . '/protocol/openid-connect/certs';
 
-    private function getUrlCertsKeycloak(): string
-    {
-        return $this->idamUri . '/realms/' . $this->audience . '/protocol/openid-connect/certs';
+        $json = @file_get_contents($url);
+
+        if ($json === false) {
+            throw new UnexpectedValueException('Unable to fetch JWKS from ' . $url);
+        }
+
+        $jwks = json_decode($json, true);
+        if (!is_array($jwks)) {
+            throw new UnexpectedValueException('Invalid JWKS response');
+        }
+
+        return $jwks;
     }
 
     public function start(Request $request, ?AuthenticationException $authException = null): JsonResponse
     {
         return new JsonResponse(['message' => 'Authentication Required'], 401);
     }
+
 }

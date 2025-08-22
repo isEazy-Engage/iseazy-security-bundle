@@ -34,6 +34,11 @@
     }
   },
   "require-dev": {
-    "phpunit/phpunit": "^12.2"
+    "phpunit/phpunit": "^12.2",
+    "squizlabs/php_codesniffer": "*"
+  },
+  "scripts": {
+    "cs": "phpcs --standard=PSR12 src tests",
+    "cbf": "phpcbf --standard=PSR12 src tests"
   }
 }

@@ -43,12 +43,8 @@ class ApiKeyAuthenticatorTest extends TestCase
     public function testAuthenticateWithValidApiKey(): void
     {
         $request = new Request([], [], [], [], [], ['HTTP_X_API_KEY' => self::API_KEY]);
-        $user = $this->getMockBuilder(UserInterface::class)->getMock();
+        $user = $this->createMock(UserInterface::class);
 
-        $this->userFactory
-            ->method('createFromApiKey')
-            ->with(self::API_KEY, null)
-            ->willReturn($user);
 
         $passport = $this->authenticator->authenticate($request);
         $passport->addBadge(new UserBadge('api_key_user', fn() => $user));
@@ -86,5 +82,62 @@ class ApiKeyAuthenticatorTest extends TestCase
         $token = $this->createMock(TokenInterface::class);
         $result = $this->authenticator->onAuthenticationSuccess($request, $token, 'main');
         $this->assertNull($result);
+    }
+
+    private function dummyApiKeyUserFactory(?UserInterface $user = null, ?string $platformId = null)
+    {
+        $user ??= new class implements UserInterface {
+            public function getUserIdentifier(): string
+            {
+                return '123';
+            }
+
+            public function getRoles(): array
+            {
+                return ['ROLE_INTERNAL'];
+            }
+
+            public function eraseCredentials(): void
+            {
+            }
+        };
+
+        $platformId ??= '3b594402-bda5-4f77-96d4-75f1a964bcbe';
+
+        return new class($user, $platformId) implements ApiKeyUserFactoryInterface {
+            private static UserInterface $user;
+            private static ?string $platformId;
+
+            public function __construct(UserInterface $user, ?string $platformId)
+            {
+                self::$user = $user;
+                self::$platformId = $platformId;
+            }
+
+            public static function createFromApiKey(string $apiKey, ?string $platformId): UserInterface
+            {
+                return self::$user;
+            }
+
+            public function getPlatformId(): ?string
+            {
+                return self::$platformId;
+            }
+
+            // Métodos de UserInterface
+            public function getUserIdentifier(): string
+            {
+                return self::$user->getUserIdentifier();
+            }
+
+            public function getRoles(): array
+            {
+                return self::$user->getRoles();
+            }
+
+            public function eraseCredentials(): void
+            {
+            }
+        };
     }
 }
