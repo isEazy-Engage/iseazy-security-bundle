@@ -104,7 +104,7 @@ class ApiKeyAuthenticatorTest extends TestCase
 
         $platformId ??= '3b594402-bda5-4f77-96d4-75f1a964bcbe';
 
-        return new class($user, $platformId) implements ApiKeyUserFactoryInterface {
+        return new class ($user, $platformId) implements ApiKeyUserFactoryInterface {
             private static UserInterface $user;
             private static ?string $platformId;
 

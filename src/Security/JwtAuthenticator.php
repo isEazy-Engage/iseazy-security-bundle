@@ -56,6 +56,10 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
             throw new CustomUserMessageAuthenticationException('Invalid JWT Token');
         }
 
+        if (!is_array($payload) || !isset($payload['sub'])) {
+            throw new CustomUserMessageAuthenticationException('Invalid JWT Payload');
+        }
+
         return new SelfValidatingPassport(
             new UserBadge(
                 $payload['sub'] ?? '',
@@ -75,8 +79,10 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): JsonResponse
     {
-        return new JsonResponse(['message' => $exception->getMessage(), 'code' => JsonResponse::HTTP_UNAUTHORIZED],
-            JsonResponse::HTTP_UNAUTHORIZED);
+        return new JsonResponse(
+            ['message' => $exception->getMessage(), 'code' => JsonResponse::HTTP_UNAUTHORIZED],
+            JsonResponse::HTTP_UNAUTHORIZED
+        );
     }
 
 
@@ -104,7 +110,7 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
 
         $this->validateToken($decoded);
 
-        return get_object_vars($decoded);
+        return json_decode(json_encode($decoded), true);
     }
 
     protected function getIssuerCertKeycloak(): string
@@ -134,5 +140,4 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
     {
         return new JsonResponse(['message' => 'Authentication Required'], 401);
     }
-
 }

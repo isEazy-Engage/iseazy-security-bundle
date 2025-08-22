@@ -148,7 +148,7 @@ class JwtAuthenticatorTest extends TestCase
             };
         }
 
-        return new class($user) implements JwtUserFactoryInterface {
+        return new class ($user) implements JwtUserFactoryInterface {
             private static $user;
 
             public function __construct($user)
@@ -182,5 +182,4 @@ class JwtAuthenticatorTest extends TestCase
             }
         };
     }
-
 }

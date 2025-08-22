@@ -71,7 +71,9 @@ final class ApiKeyAuthenticator extends AbstractAuthenticator
         Request $request,
         AuthenticationException $exception
     ): ?JsonResponse {
-        return new JsonResponse(['message' => 'Unauthorized', 'code' => JsonResponse::HTTP_UNAUTHORIZED],
-            JsonResponse::HTTP_UNAUTHORIZED);
+        return new JsonResponse(
+            ['message' => 'Unauthorized', 'code' => JsonResponse::HTTP_UNAUTHORIZED],
+            JsonResponse::HTTP_UNAUTHORIZED
+        );
     }
 }
