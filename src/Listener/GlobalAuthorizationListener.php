@@ -53,7 +53,6 @@ final readonly class GlobalAuthorizationListener
             return;
         }
 
-        throw new AccessDeniedHttpException('user_not_supported', null, 403);
     }
 
     private function assertValidUuid(string $uuid): void
