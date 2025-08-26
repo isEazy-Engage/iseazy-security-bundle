@@ -11,6 +11,8 @@ use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+
 
 final readonly class GlobalAuthorizationListener
 {
@@ -67,7 +69,7 @@ final readonly class GlobalAuthorizationListener
     private function assertJwtPlatformAccess(?string $requestedPlatformId, string $userPlatformId): void
     {
         if ($requestedPlatformId !== null && $requestedPlatformId !== $userPlatformId) {
-            throw new AccessDeniedHttpException('invalid_platform_id', null, 403);
+            throw new AccessDeniedException('invalid_platform_id', null, 403);
         }
     }
 }
