@@ -22,6 +22,10 @@ use UnexpectedValueException;
 class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEntryPointInterface
 {
     private string $audience;
+    // Propiedades estáticas para la caché de JWKS
+    private static array $jwksCache = [];
+    private static int $jwksCacheExpiresAt = 0;
+    private const JWKS_CACHE_TTL = 300; // 5 minutos
 
     public function __construct(
         private readonly string $idamUri,
@@ -120,19 +124,24 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
 
     protected function fetchJwks(): array
     {
+        $now = time();
+        // Si la caché está vigente, usarla
+        if (self::$jwksCache && self::$jwksCacheExpiresAt > $now) {
+            return self::$jwksCache;
+        }
+
         $url = $this->idamUri . '/realms/' . $this->audience . '/protocol/openid-connect/certs';
-
         $json = @file_get_contents($url);
-
         if ($json === false) {
             throw new UnexpectedValueException('Unable to fetch JWKS from ' . $url);
         }
-
         $jwks = json_decode($json, true);
         if (!is_array($jwks)) {
             throw new UnexpectedValueException('Invalid JWKS response');
         }
-
+        // Guardar en caché
+        self::$jwksCache = $jwks;
+        self::$jwksCacheExpiresAt = $now + self::JWKS_CACHE_TTL;
         return $jwks;
     }
 
