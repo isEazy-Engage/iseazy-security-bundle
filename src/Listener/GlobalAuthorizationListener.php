@@ -45,15 +45,14 @@ final readonly class GlobalAuthorizationListener
         if ($user === null) {
             throw new AccessDeniedHttpException('user_not_authenticated');
         }
+        /* if ($user instanceof ApiKeyUserFactoryInterface) {
+             return;
+         }
 
-        if ($user instanceof ApiKeyUserFactoryInterface) {
-            return;
-        }
-
-        if ($user instanceof JwtUserFactoryInterface) {
-            $this->assertJwtPlatformAccess($platformId, $user->getPlatformId());
-            return;
-        }
+         if ($user instanceof JwtUserFactoryInterface) {
+             $this->assertJwtPlatformAccess($platformId, $user->getPlatformId());
+             return;
+         }*/
 
     }
 
