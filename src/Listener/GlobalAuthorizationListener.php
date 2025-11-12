@@ -13,7 +13,6 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
-
 final readonly class GlobalAuthorizationListener
 {
     private const API_FIREWALL = 'security.firewall.map.context.api';
@@ -53,7 +52,6 @@ final readonly class GlobalAuthorizationListener
              $this->assertJwtPlatformAccess($platformId, $user->getPlatformId());
              return;
          }*/
-
     }
 
     private function assertValidUuid(string $uuid): void

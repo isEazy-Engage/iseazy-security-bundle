@@ -12,25 +12,26 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
-use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
 use Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 use UnexpectedValueException;
 
 class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEntryPointInterface
 {
     private string $audience;
-    // Propiedades estáticas para la caché de JWKS
-    private static array $jwksCache = [];
-    private static int $jwksCacheExpiresAt = 0;
+    private const JWKS_CACHE_KEY = 'jwks_cache';
     private const JWKS_CACHE_TTL = 300; // 5 minutos
+    private CacheInterface $cache;
 
     public function __construct(
         private readonly string $idamUri,
         private readonly string $expectedIssuerUri,
-        private readonly string $userFactory
+        private readonly string $userFactory,
+        CacheInterface $cache
     ) {
         if (!is_subclass_of($userFactory, JwtUserFactoryInterface::class)) {
             throw new \LogicException(
@@ -43,6 +44,7 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
         }
 
         $this->audience = $_ENV['IDAM_AUDIENCE'] ?? 'IsEazy';
+        $this->cache = $cache;
     }
 
     public function supports(Request $request): ?bool
@@ -124,24 +126,19 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
 
     protected function fetchJwks(): array
     {
-        $now = time();
-        // Si la caché está vigente, usarla
-        if (self::$jwksCache && self::$jwksCacheExpiresAt > $now) {
-            return self::$jwksCache;
-        }
-
-        $url = $this->idamUri . '/realms/' . $this->audience . '/protocol/openid-connect/certs';
-        $json = @file_get_contents($url);
-        if ($json === false) {
-            throw new UnexpectedValueException('Unable to fetch JWKS from ' . $url);
-        }
-        $jwks = json_decode($json, true);
-        if (!is_array($jwks)) {
-            throw new UnexpectedValueException('Invalid JWKS response');
-        }
-        // Guardar en caché
-        self::$jwksCache = $jwks;
-        self::$jwksCacheExpiresAt = $now + self::JWKS_CACHE_TTL;
+        $jwks = $this->cache->get(self::JWKS_CACHE_KEY, function (ItemInterface $item) {
+            $item->expiresAfter(self::JWKS_CACHE_TTL);
+            $url = $this->idamUri . '/realms/' . $this->audience . '/protocol/openid-connect/certs';
+            $json = @file_get_contents($url);
+            if ($json === false) {
+                throw new UnexpectedValueException('Unable to fetch JWKS from ' . $url);
+            }
+            $jwks = json_decode($json, true);
+            if (!is_array($jwks)) {
+                throw new UnexpectedValueException('Invalid JWKS response');
+            }
+            return $jwks;
+        });
         return $jwks;
     }
 
