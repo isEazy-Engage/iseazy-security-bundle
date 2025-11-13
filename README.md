@@ -92,3 +92,8 @@ class ApiKeyUserFactory implements ApiKeyUserFactoryInterface
         jwt_user_class: TaskBundle\Context\User\Domain\Entity\User
         api_key_user_class: TaskBundle\Context\User\Domain\Entity\ApiKeyUser
 ```
+
+git tag -d v1.0.2
+git push origin :refs/tags/v1.0.2
+git tag -a v1.0.2 -m "Release v1.0.2"
+git push origin v1.0.2
