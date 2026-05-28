@@ -6,6 +6,7 @@ namespace Iseazy\Security\Security;
 
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -18,20 +19,22 @@ use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPasspor
 use Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 use UnexpectedValueException;
 
 class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEntryPointInterface
 {
-    private string $audience;
     private const JWKS_CACHE_KEY = 'jwks_cache';
     private const JWKS_CACHE_TTL = 300; // 5 minutos
-    private CacheInterface $cache;
 
     public function __construct(
         private readonly string $idamUri,
         private readonly string $expectedIssuerUri,
         private readonly string $userFactory,
-        CacheInterface $cache
+        private readonly CacheInterface $cache,
+        private readonly HttpClientInterface $httpClient,
+        private readonly LoggerInterface $logger,
+        private readonly string $audience = 'IsEazy'
     ) {
         if (!is_subclass_of($userFactory, JwtUserFactoryInterface::class)) {
             throw new \LogicException(
@@ -42,9 +45,6 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
                 )
             );
         }
-
-        $this->audience = $_ENV['IDAM_AUDIENCE'] ?? 'IsEazy';
-        $this->cache = $cache;
     }
 
     public function supports(Request $request): ?bool
@@ -56,15 +56,36 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
     public function authenticate(Request $request): SelfValidatingPassport
     {
         $token = substr($request->headers->get('Authorization'), 7);
+
         try {
             $payload = $this->decodeAndValidate($token);
         } catch (\Throwable $e) {
+            $this->logger->warning('JWT authentication failed', [
+                'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
+                'uri' => $request->getRequestUri(),
+                'method' => $request->getMethod(),
+                'ip' => $request->getClientIp()
+            ]);
             throw new CustomUserMessageAuthenticationException('Invalid JWT Token');
         }
 
         if (!is_array($payload) || !isset($payload['sub'])) {
+            $this->logger->error('Invalid JWT payload structure', [
+                'has_sub' => isset($payload['sub']),
+                'payload_keys' => is_array($payload) ? array_keys($payload) : 'not_array',
+                'uri' => $request->getRequestUri()
+            ]);
             throw new CustomUserMessageAuthenticationException('Invalid JWT Payload');
         }
+
+        $this->logger->info('JWT authentication successful', [
+            'user_id' => $payload['sub'],
+            'platform_id' => $payload['platform_id'] ?? null,
+            'username' => $payload['preferred_username'] ?? null,
+            'uri' => $request->getRequestUri(),
+            'method' => $request->getMethod()
+        ]);
 
         return new SelfValidatingPassport(
             new UserBadge(
@@ -94,16 +115,30 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
 
     private function validateToken(\stdClass $decoded): void
     {
-        if ($decoded->iss !== $this->getIssuerCertKeycloak()) {
+        $expectedIssuer = $this->getIssuerCertKeycloak();
+
+        if ($decoded->iss !== $expectedIssuer) {
+            $this->logger->warning('JWT issuer validation failed', [
+                'expected_issuer' => $expectedIssuer,
+                'received_issuer' => $decoded->iss,
+                'subject' => $decoded->sub ?? null
+            ]);
             throw new UnexpectedValueException(
                 sprintf(
                     'Invalid issuer. Expected: %s, got: %s',
-                    $this->getIssuerCertKeycloak(),
+                    $expectedIssuer,
                     $decoded->iss
                 )
             );
         }
+
         if (time() > $decoded->exp) {
+            $this->logger->warning('JWT token expired', [
+                'expired_at' => date('Y-m-d H:i:s', $decoded->exp),
+                'current_time' => date('Y-m-d H:i:s'),
+                'subject' => $decoded->sub ?? null,
+                'issuer' => $decoded->iss ?? null
+            ]);
             throw new UnexpectedValueException('Token expired');
         }
     }
@@ -129,16 +164,35 @@ class JwtAuthenticator extends AbstractAuthenticator implements AuthenticationEn
         $jwks = $this->cache->get(self::JWKS_CACHE_KEY, function (ItemInterface $item) {
             $item->expiresAfter(self::JWKS_CACHE_TTL);
             $url = $this->idamUri . '/realms/' . $this->audience . '/protocol/openid-connect/certs';
-            $json = @file_get_contents($url);
-            if ($json === false) {
-                throw new UnexpectedValueException('Unable to fetch JWKS from ' . $url);
+
+            try {
+                $response = $this->httpClient->request('GET', $url, [
+                    'timeout' => 10,
+                ]);
+
+                $json = $response->getContent();
+                $jwks = json_decode($json, true);
+
+                if (!is_array($jwks)) {
+                    throw new UnexpectedValueException('Invalid JWKS response');
+                }
+
+                $this->logger->info('JWKS fetched successfully', [
+                    'url' => $url,
+                    'keys_count' => count($jwks['keys'] ?? [])
+                ]);
+
+                return $jwks;
+            } catch (\Throwable $e) {
+                $this->logger->error('Failed to fetch JWKS', [
+                    'url' => $url,
+                    'error' => $e->getMessage(),
+                    'exception_class' => get_class($e)
+                ]);
+                throw new UnexpectedValueException('Unable to fetch JWKS from ' . $url, 0, $e);
             }
-            $jwks = json_decode($json, true);
-            if (!is_array($jwks)) {
-                throw new UnexpectedValueException('Invalid JWKS response');
-            }
-            return $jwks;
         });
+
         return $jwks;
     }
 

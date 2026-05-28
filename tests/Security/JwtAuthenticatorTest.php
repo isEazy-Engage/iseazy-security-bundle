@@ -7,14 +7,37 @@ namespace Tests\Security;
 use Firebase\JWT\JWT;
 use Iseazy\Security\Security\JwtUserFactoryInterface;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Iseazy\Security\Security\JwtAuthenticator;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 class JwtAuthenticatorTest extends TestCase
 {
+    protected function createAuthenticator(
+        string $userFactoryClass = null,
+        HttpClientInterface $httpClient = null,
+        LoggerInterface $logger = null
+    ): JwtAuthenticator {
+        $userFactoryClass = $userFactoryClass ?? $this->createMock(JwtUserFactoryInterface::class)::class;
+        $cache = $this->createMock(\Symfony\Contracts\Cache\CacheInterface::class);
+        $httpClient = $httpClient ?? $this->createMock(HttpClientInterface::class);
+        $logger = $logger ?? $this->createMock(LoggerInterface::class);
+
+        return new JwtAuthenticator(
+            'http://fake-keycloak.test',
+            'http://fake-keycloak.test',
+            $userFactoryClass,
+            $cache,
+            $httpClient,
+            $logger
+        );
+    }
+
     protected function generateMockToken(): string
     {
         $privateKey = file_get_contents(__DIR__ . '/../config/jwt/private.pem');
@@ -44,15 +67,7 @@ class JwtAuthenticatorTest extends TestCase
 
     public function testSupportsReturnsFalseWhenNoAuthorizationHeader(): void
     {
-        $userFactory = $this->createMock(JwtUserFactoryInterface::class);
-        $cache = $this->createMock(\Symfony\Contracts\Cache\CacheInterface::class);
-        $authenticator = new JwtAuthenticator(
-            'http://fake-keycloak.test',
-            'http://fake-keycloak.test',
-            $userFactory::class,
-            $cache
-        );
-
+        $authenticator = $this->createAuthenticator();
         $request = new Request();
 
         $this->assertFalse($authenticator->supports($request));
@@ -60,16 +75,7 @@ class JwtAuthenticatorTest extends TestCase
 
     public function testSupportsReturnsTrueWhenAuthorizationHeaderPresent(): void
     {
-        $userFactory = $this->createMock(JwtUserFactoryInterface::class);
-        $cache = $this->createMock(\Symfony\Contracts\Cache\CacheInterface::class);
-
-        $authenticator = new JwtAuthenticator(
-            'http://fake-keycloak.test',
-            'http://fake-keycloak.test',
-            $userFactory::class,
-            $cache
-        );
-
+        $authenticator = $this->createAuthenticator();
         $request = new Request(server: [
             'HTTP_AUTHORIZATION' => 'Bearer some.jwt.token',
         ]);
@@ -79,16 +85,7 @@ class JwtAuthenticatorTest extends TestCase
 
     public function testAuthenticateThrowsExceptionWhenHeaderMalformed()
     {
-        $userFactory = $this->createMock(JwtUserFactoryInterface::class);
-        $cache = $this->createMock(\Symfony\Contracts\Cache\CacheInterface::class);
-
-        $authenticator = new JwtAuthenticator(
-            'http://fake-keycloak.test',
-            'http://fake-keycloak.test',
-            $userFactory::class,
-            $cache
-        );
-
+        $authenticator = $this->createAuthenticator();
         $request = new Request();
         $request->headers->set('Authorization', 'Bearer'); // Sin token
 
@@ -99,10 +96,7 @@ class JwtAuthenticatorTest extends TestCase
     public function testAuthenticateThrowsExceptionWhenTokenInvalid()
     {
         $userFactory = $this->dummyUserFactory();
-        $cache = $this->createMock(\Symfony\Contracts\Cache\CacheInterface::class);
-
-
-        $authenticator = new JwtAuthenticator('http://idam', 'http://issuer', $userFactory::class, $cache);
+        $authenticator = $this->createAuthenticator($userFactory::class);
 
         $request = new Request();
         $request->headers->set('Authorization', 'Bearer invalidtoken');
@@ -118,10 +112,18 @@ class JwtAuthenticatorTest extends TestCase
 
         $userFactory = $this->dummyUserFactory($user);
         $cache = $this->createMock(\Symfony\Contracts\Cache\CacheInterface::class);
+        $httpClient = $this->createMock(HttpClientInterface::class);
+        $logger = $this->createMock(LoggerInterface::class);
 
         $authenticator = $this->getMockBuilder(JwtAuthenticator::class)
-            ->setConstructorArgs(['http://fake-keycloak.test', 'http://fake-keycloak.test', $userFactory::class, $cache]
-            )
+            ->setConstructorArgs([
+                'http://fake-keycloak.test',
+                'http://fake-keycloak.test',
+                $userFactory::class,
+                $cache,
+                $httpClient,
+                $logger
+            ])
             ->onlyMethods(['fetchJwks'])
             ->getMock();
 

@@ -6,6 +6,7 @@ namespace Iseazy\Security\Listener;
 
 use Iseazy\Security\Security\ApiKeyUserFactoryInterface;
 use Iseazy\Security\Security\JwtUserFactoryInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
@@ -18,7 +19,8 @@ final readonly class GlobalAuthorizationListener
     private const API_FIREWALL = 'security.firewall.map.context.api';
 
     public function __construct(
-        private Security $security
+        private Security $security,
+        private LoggerInterface $logger
     ) {
     }
 
@@ -42,8 +44,21 @@ final readonly class GlobalAuthorizationListener
 
         $user = $this->security->getUser();
         if ($user === null) {
+            $this->logger->warning('Unauthenticated access attempt', [
+                'uri' => $request->getRequestUri(),
+                'method' => $request->getMethod(),
+                'ip' => $request->getClientIp(),
+                'firewall' => $firewallContext
+            ]);
             throw new AccessDeniedHttpException('user_not_authenticated');
         }
+
+        $this->logger->debug('Global authorization check passed', [
+            'user' => $user->getUserIdentifier(),
+            'platform_id' => $platformId,
+            'uri' => $request->getRequestUri()
+        ]);
+
         /* if ($user instanceof ApiKeyUserFactoryInterface) {
              return;
          }
@@ -58,7 +73,11 @@ final readonly class GlobalAuthorizationListener
     {
         try {
             Uuid::fromString($uuid);
-        } catch (\InvalidArgumentException) {
+        } catch (\InvalidArgumentException $e) {
+            $this->logger->warning('Invalid UUID provided in request', [
+                'uuid' => $uuid,
+                'error' => $e->getMessage()
+            ]);
             throw new BadRequestException('invalid_uuid');
         }
     }

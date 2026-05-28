@@ -88,12 +88,103 @@ class ApiKeyUserFactory implements ApiKeyUserFactoryInterface
 5. Le indicamos a Symfony que use estas clases como proveedores de usuarios en tu configuración de seguridad:
 
 ```yaml
-    iseazy_security:
-        jwt_user_class: TaskBundle\Context\User\Domain\Entity\User
-        api_key_user_class: TaskBundle\Context\User\Domain\Entity\ApiKeyUser
+# config/packages/iseazy_security.yaml
+iseazy_security:
+    jwt_user_class: TaskBundle\Context\User\Domain\Entity\User
+    api_key_user_class: TaskBundle\Context\User\Domain\Entity\ApiKeyUser
+    enable_global_listener: true  # Opcional: habilita/deshabilita el GlobalAuthorizationListener (por defecto: true)
 ```
 
-git tag -d v1.0.2
-git push origin :refs/tags/v1.0.2
-git tag -a v1.0.2 -m "Release v1.0.2"
-git push origin v1.0.2
+## Configuración Avanzada
+
+### GlobalAuthorizationListener
+
+El bundle incluye un `GlobalAuthorizationListener` que valida:
+- UUIDs válidos en parámetros `platformId`/`platformUid`
+- Que el usuario esté autenticado en el firewall `api`
+
+Si necesitas deshabilitarlo (por ejemplo, para endpoints públicos o para usar `security: false`), puedes hacerlo en la configuración:
+
+```yaml
+# config/packages/iseazy_security.yaml
+iseazy_security:
+    jwt_user_class: TaskBundle\Context\User\Domain\Entity\User
+    enable_global_listener: false  # Deshabilita el listener
+```
+
+### Observabilidad y Logging
+
+El bundle escribe logs estructurados utilizando el canal **`security`** de Monolog (si está disponible), compatibles con ELK Stack.
+
+**✅ Funciona sin configuración:** Si no configuras Monolog, los logs irán al logger por defecto de Symfony.
+
+**✅ Canal automático:** El tag `monolog.logger` con `channel: 'security'` crea el canal automáticamente si Monolog está instalado.
+
+#### Eventos registrados:
+
+- ✅ Autenticación JWT exitosa/fallida
+- ✅ Autenticación API Key exitosa/fallida
+- ✅ Errores de validación de tokens
+- ✅ Intentos de acceso no autenticados
+- ✅ UUIDs inválidos en parámetros
+- ✅ Errores al obtener JWKS de Keycloak
+
+#### Contexto incluido en logs:
+Todos los logs incluyen contexto rico para facilitar búsquedas y análisis:
+- `user_id`, `platform_id`, `username`
+- `uri`, `method`, `ip`
+- `error`, `exception_class`
+- Timestamps, issuer, expiration dates
+
+#### Configuración para ELK (Opcional)
+
+Hay 3 opciones de configuración según tus necesidades:
+
+**Opción 1: Sin configuración (logs por defecto)**
+No necesitas configurar nada. Los logs irán a `var/log/dev.log` o `var/log/prod.log` según el entorno.
+
+**Opción 2: Separar logs de seguridad en archivo propio**
+```yaml
+# config/packages/monolog.yaml
+monolog:
+    channels: ['security']
+    handlers:
+        security:
+            type: stream
+            path: "%kernel.logs_dir%/security.log"
+            level: info
+            channels: ['security']
+            formatter: 'monolog.formatter.json'  # JSON para ELK
+```
+
+**Opción 3: Enviar directamente a Elasticsearch**
+```yaml
+# config/packages/monolog.yaml
+monolog:
+    channels: ['security']
+    handlers:
+        elasticsearch:
+            type: elasticsearch
+            index: security-logs
+            level: info
+            channels: ['security']
+```
+
+#### Ejemplo de log estructurado:
+
+```json
+{
+  "message": "JWT authentication successful",
+  "context": {
+    "user_id": "f:realm:c34fc026-c263-4a9e-ad0d-98c6d67bf769",
+    "platform_id": "3b594402-bda5-4f77-96d4-75f1a964bcbe",
+    "username": "john.doe@example.com",
+    "uri": "/api/campaigns",
+    "method": "GET",
+    "ip": "192.168.1.100"
+  },
+  "level": "INFO",
+  "channel": "security",
+  "datetime": "2025-05-28T10:30:45+00:00"
+}
+```
