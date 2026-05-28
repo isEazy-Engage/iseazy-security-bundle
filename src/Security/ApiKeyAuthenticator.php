@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Iseazy\Security\Security;
 
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
@@ -17,7 +18,8 @@ final class ApiKeyAuthenticator extends AbstractAuthenticator
 {
     public function __construct(
         private readonly string $apiKey,
-        private readonly string $userFactory
+        private readonly string $userFactory,
+        private readonly LoggerInterface $logger
     ) {
         if (!is_subclass_of($userFactory, ApiKeyUserFactoryInterface::class)) {
             throw new \LogicException(
@@ -38,15 +40,34 @@ final class ApiKeyAuthenticator extends AbstractAuthenticator
     public function authenticate(Request $request): SelfValidatingPassport
     {
         $apiKey = $request->headers->get('X-API-Key');
+
         if ($apiKey === null) {
+            $this->logger->warning('API Key authentication attempted without key', [
+                'uri' => $request->getRequestUri(),
+                'method' => $request->getMethod(),
+                'ip' => $request->getClientIp()
+            ]);
             throw new CustomUserMessageAuthenticationException('No API Key provided');
         }
 
         if ($apiKey !== $this->apiKey) {
+            $this->logger->warning('Invalid API Key provided', [
+                'uri' => $request->getRequestUri(),
+                'method' => $request->getMethod(),
+                'ip' => $request->getClientIp(),
+                'key_prefix' => substr($apiKey, 0, 8) . '...'
+            ]);
             throw new CustomUserMessageAuthenticationException('Invalid API Key');
         }
 
         $platformId = $request->query->get('platformId') ?? $request->query->get('platformUid');
+
+        $this->logger->info('API Key authentication successful', [
+            'platform_id' => $platformId,
+            'uri' => $request->getRequestUri(),
+            'method' => $request->getMethod(),
+            'ip' => $request->getClientIp()
+        ]);
 
         return new SelfValidatingPassport(
             new UserBadge(
