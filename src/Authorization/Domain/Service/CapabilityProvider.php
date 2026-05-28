@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Iseazy\Security\Authorization\Port;
+namespace Iseazy\Security\Authorization\Domain\Service;
 
-use Iseazy\Security\Authorization\Exception\CapabilityProviderUnavailableException;
-use Iseazy\Security\Authorization\Model\Capabilities;
+use Iseazy\Security\Authorization\Domain\Exception\CapabilityProviderUnavailableException;
+use Iseazy\Security\Authorization\Domain\Model\Capabilities;
 
 /**
  * Port interface for providing user capabilities from different sources.

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Iseazy\Security\Tests\Authorization\Port;
 
-use Iseazy\Security\Authorization\Model\Capabilities;
-use Iseazy\Security\Authorization\Port\CapabilityProvider;
+use Iseazy\Security\Authorization\Domain\Model\Capabilities;
+use Iseazy\Security\Authorization\Domain\Service\CapabilityProvider;
 use PHPUnit\Framework\TestCase;
 
 /**

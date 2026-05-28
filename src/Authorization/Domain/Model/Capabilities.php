@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Iseazy\Security\Authorization\Model;
+namespace Iseazy\Security\Authorization\Domain\Model;
 
 use Countable;
 use IteratorAggregate;

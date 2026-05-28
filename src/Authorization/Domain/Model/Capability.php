@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Iseazy\Security\Authorization\Model;
+namespace Iseazy\Security\Authorization\Domain\Model;
 
-use Iseazy\Security\Authorization\Exception\InvalidCapabilityException;
+use Iseazy\Security\Authorization\Domain\Exception\InvalidCapabilityException;
 
 /**
  * Value Object representing a capability with an action, scope, and context.

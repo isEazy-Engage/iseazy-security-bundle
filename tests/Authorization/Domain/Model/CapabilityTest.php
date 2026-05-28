@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Tests\Authorization\Model;
+namespace Tests\Authorization\Domain\Model;
 
-use Iseazy\Security\Authorization\Exception\InvalidCapabilityException;
-use Iseazy\Security\Authorization\Model\Capability;
-use Iseazy\Security\Authorization\Model\Scope;
+use Iseazy\Security\Authorization\Domain\Exception\InvalidCapabilityException;
+use Iseazy\Security\Authorization\Domain\Model\Capability;
+use Iseazy\Security\Authorization\Domain\Model\Scope;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

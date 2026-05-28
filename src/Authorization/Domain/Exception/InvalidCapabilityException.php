@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Iseazy\Security\Authorization\Exception;
+namespace Iseazy\Security\Authorization\Domain\Exception;
 
 /**
  * Exception thrown when attempting to create or manipulate an invalid Capability.

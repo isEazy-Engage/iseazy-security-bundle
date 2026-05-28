@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Iseazy\Security\Tests\Authorization\Model;
 
-use Iseazy\Security\Authorization\Model\Capabilities;
-use Iseazy\Security\Authorization\Model\Capability;
-use Iseazy\Security\Authorization\Model\Scope;
+use Iseazy\Security\Authorization\Domain\Model\Capabilities;
+use Iseazy\Security\Authorization\Domain\Model\Capability;
+use Iseazy\Security\Authorization\Domain\Model\Scope;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

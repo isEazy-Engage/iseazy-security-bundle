@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Iseazy\Security\Tests\Authorization\Exception;
 
-use Iseazy\Security\Authorization\Exception\CapabilityProviderUnavailableException;
+use Iseazy\Security\Authorization\Domain\Exception\CapabilityProviderUnavailableException;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
