@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Iseazy\Security\Tests\Authorization\Port;
+namespace Iseazy\Security\Tests\Authorization\Domain\Service;
 
 use Iseazy\Security\Authorization\Domain\Model\Capabilities;
 use Iseazy\Security\Authorization\Domain\Service\CapabilityProvider;
@@ -29,14 +29,14 @@ final class CapabilityProviderTest extends TestCase
     {
         // ARRANGE
         $provider = new class implements CapabilityProvider {
-            public function getUserCapabilities(string $userId, string $platformId, array $roles = []): Capabilities
+            public function capabilities(string $userId, string $platformId, array $roles = []): Capabilities
             {
                 return Capabilities::empty();
             }
         };
 
         // ACT
-        $capabilities = $provider->getUserCapabilities(
+        $capabilities = $provider->capabilities(
             '550e8400-e29b-41d4-a716-446655440000',
             '660e8400-e29b-41d4-a716-446655440000',
             ['ROLE_USER']
@@ -71,14 +71,14 @@ final class CapabilityProviderTest extends TestCase
             {
             }
 
-            public function getUserCapabilities(string $userId, string $platformId, array $roles = []): Capabilities
+            public function capabilities(string $userId, string $platformId, array $roles = []): Capabilities
             {
                 return $this->capabilities;
             }
         };
 
         // ACT
-        $capabilities = $provider->getUserCapabilities(
+        $capabilities = $provider->capabilities(
             '550e8400-e29b-41d4-a716-446655440000',
             '660e8400-e29b-41d4-a716-446655440000',
             ['ROLE_USER']

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Iseazy\Security\Tests\Authorization\Exception;
+namespace Iseazy\Security\Tests\Authorization\Domain\Exception;
 
 use Iseazy\Security\Authorization\Domain\Exception\CapabilityProviderUnavailableException;
 use PHPUnit\Framework\TestCase;
@@ -17,23 +17,23 @@ use RuntimeException;
 final class CapabilityProviderUnavailableExceptionTest extends TestCase
 {
     /**
-     * Tests that CapabilityProviderUnavailableException can be instantiated and thrown.
+     * Tests that CapabilityProviderUnavailableException can be instantiated and thrown using named constructor.
      *
      * This test validates:
-     * - The exception can be created with a message
+     * - The exception can be created with unavailable() named constructor
      * - The exception can be thrown and caught
-     * - The exception message is preserved
+     * - The exception message is always snake_case
      */
     public function testCapabilityProviderUnavailableExceptionCanBeInstantiatedAndThrown(): void
     {
         // ARRANGE
-        $message = 'capability_provider_unavailable';
+        $expectedMessage = 'capability_provider_unavailable';
 
         // ACT & ASSERT
         $this->expectException(CapabilityProviderUnavailableException::class);
-        $this->expectExceptionMessage($message);
+        $this->expectExceptionMessage($expectedMessage);
 
-        throw new CapabilityProviderUnavailableException($message);
+        throw CapabilityProviderUnavailableException::unavailable();
     }
 
     /**
@@ -46,17 +46,17 @@ final class CapabilityProviderUnavailableExceptionTest extends TestCase
     public function testCapabilityProviderUnavailableExceptionExtendsRuntimeException(): void
     {
         // ARRANGE
-        $exception = new CapabilityProviderUnavailableException('capability_provider_unavailable');
+        $exception = CapabilityProviderUnavailableException::unavailable();
 
         // ACT & ASSERT
         $this->assertInstanceOf(RuntimeException::class, $exception);
     }
 
     /**
-     * Tests that the exception can wrap a previous exception.
+     * Tests that the exception can wrap a previous exception using named constructor.
      *
      * This test validates:
-     * - The exception supports the $previous parameter
+     * - The exception supports the $previous parameter in named constructor
      * - The previous exception is preserved in the chain
      */
     public function testCapabilityProviderUnavailableExceptionCanWrapPreviousException(): void
@@ -65,11 +65,7 @@ final class CapabilityProviderUnavailableExceptionTest extends TestCase
         $previousException = new RuntimeException('database_connection_failed');
 
         // ACT
-        $exception = new CapabilityProviderUnavailableException(
-            'capability_provider_unavailable',
-            0,
-            $previousException
-        );
+        $exception = CapabilityProviderUnavailableException::unavailable($previousException);
 
         // ASSERT
         $this->assertSame($previousException, $exception->getPrevious());
@@ -82,24 +78,24 @@ final class CapabilityProviderUnavailableExceptionTest extends TestCase
      * This test validates:
      * - The exception can be caught in a try-catch block
      * - Exception properties are accessible after catching
+     * - Message is always snake_case from named constructor
      */
     public function testCapabilityProviderUnavailableExceptionCanBeCaughtAndInspected(): void
     {
         // ARRANGE
-        $message = 'capability_provider_unavailable';
-        $code = 500;
+        $expectedMessage = 'capability_provider_unavailable';
         $caughtException = null;
 
         // ACT
         try {
-            throw new CapabilityProviderUnavailableException($message, $code);
+            throw CapabilityProviderUnavailableException::unavailable();
         } catch (CapabilityProviderUnavailableException $exception) {
             $caughtException = $exception;
         }
 
         // ASSERT
         $this->assertNotNull($caughtException);
-        $this->assertSame($message, $caughtException->getMessage());
-        $this->assertSame($code, $caughtException->getCode());
+        $this->assertSame($expectedMessage, $caughtException->getMessage());
+        $this->assertSame(0, $caughtException->getCode());
     }
 }

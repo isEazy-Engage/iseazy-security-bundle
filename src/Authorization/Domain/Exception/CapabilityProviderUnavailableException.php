@@ -27,12 +27,26 @@ use RuntimeException;
  *
  * Example usage:
  * ```php
- * throw new CapabilityProviderUnavailableException(
- *     'capability_provider_unavailable',
+ * throw CapabilityProviderUnavailableException::unavailable(
  *     previous: $httpException
  * );
  * ```
  */
 final class CapabilityProviderUnavailableException extends RuntimeException
 {
+    /**
+     * Creates exception for when capability provider cannot determine capabilities.
+     *
+     * @param \Throwable|null $previous The underlying exception that caused the failure
+     *
+     * @return self
+     */
+    public static function unavailable(?\Throwable $previous = null): self
+    {
+        return new self(
+            message: 'capability_provider_unavailable',
+            code: 0,
+            previous: $previous
+        );
+    }
 }

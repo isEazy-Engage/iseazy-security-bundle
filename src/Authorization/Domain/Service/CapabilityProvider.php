@@ -44,5 +44,5 @@ interface CapabilityProvider
      *
      * @throws CapabilityProviderUnavailableException If capabilities cannot be determined (fail-closed)
      */
-    public function getUserCapabilities(string $userId, string $platformId, array $roles = []): Capabilities;
+    public function capabilities(string $userId, string $platformId, array $roles = []): Capabilities;
 }
