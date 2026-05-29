@@ -219,18 +219,22 @@ public function update(string $id): Response
 
 Task and Supervisor microservices **fetch capabilities from Platform** via HTTP API.
 
+> **Important:** `HttpCapabilityProvider` uses **service-to-service authentication** with an API Key, not user JWT. This allows it to work in background jobs, CLI commands, and workers where no user context exists.
+
 **Step 1:** Register `HttpCapabilityProvider`:
 
 ```yaml
 # config/services.yaml
 services:
-    # Base HTTP provider
+    # Base HTTP provider with service-to-service authentication
     Iseazy\Security\Authorization\Infrastructure\HttpCapabilityProvider:
         arguments:
+            $platformUrl: '%env(PLATFORM_URL)%'
+            $serviceApiKey: '%env(PLATFORM_SERVICE_API_KEY)%'
             $httpClient: '@http_client'
-            $platformApiUrl: '%env(PLATFORM_API_URL)%'
-            $timeout: '%iseazy_security.authorization.http.timeout%'
-            $failMode: '%iseazy_security.authorization.http.fail_mode%'
+            $logger: '@logger'
+            $timeoutSeconds: 3
+            $failClosed: true
 
     # Register as the CapabilityProvider port
     Iseazy\Security\Authorization\Domain\Service\CapabilityProvider:
@@ -245,10 +249,12 @@ services:
     # Base HTTP provider
     Iseazy\Security\Authorization\Infrastructure\HttpCapabilityProvider:
         arguments:
+            $platformUrl: '%env(PLATFORM_URL)%'
+            $serviceApiKey: '%env(PLATFORM_SERVICE_API_KEY)%'
             $httpClient: '@http_client'
-            $platformApiUrl: '%env(PLATFORM_API_URL)%'
-            $timeout: '%iseazy_security.authorization.http.timeout%'
-            $failMode: '%iseazy_security.authorization.http.fail_mode%'
+            $logger: '@logger'
+            $timeoutSeconds: 3
+            $failClosed: true
 
     # Cached decorator
     Iseazy\Security\Authorization\Infrastructure\CachedCapabilityProvider:
@@ -263,11 +269,12 @@ services:
         alias: Iseazy\Security\Authorization\Infrastructure\CachedCapabilityProvider
 ```
 
-**Step 3:** Define Platform API URL:
+**Step 3:** Define Platform API URL and Service API Key:
 
 ```bash
 # .env
-PLATFORM_API_URL=https://platform.example.com
+PLATFORM_URL=https://platform.example.com
+PLATFORM_SERVICE_API_KEY=your-service-api-key-here
 ```
 
 **Step 4:** Use `CapabilityVoter` in your controllers:

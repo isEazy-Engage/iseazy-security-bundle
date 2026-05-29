@@ -1,59 +1,53 @@
 # Notas de Arquitectura - Bundle iseazy/security
 
-## Decisiones Pendientes de Revisión
+## Decisiones de Arquitectura Implementadas
 
 ### 1. Autenticación Service-to-Service para HttpCapabilityProvider
 
-**Fecha:** 2026-05-29  
-**Contexto:** Actualmente `HttpCapabilityProvider` usa `JwtProvider` para obtener el JWT del usuario y autenticarse contra Platform API.
+**Fecha Decisión:** 2026-05-29  
+**Estado:** ✅ IMPLEMENTADO
 
-**Problema Identificado:**
-- Para comunicación interna entre microservicios (Task → Platform, Supervisor → Platform), usar el JWT del usuario tiene limitaciones:
-  - Background jobs no tienen usuario autenticado
-  - Service-to-service debería usar credenciales de servicio, no de usuario
-  - El JWT del usuario puede no tener permisos para endpoints internos
-  - Requiere propagar el JWT del usuario a través de workers/queues
+**Contexto:**
+Inicialmente `HttpCapabilityProvider` usaba `JwtProvider` para obtener el JWT del usuario y autenticarse contra Platform API. Esto presentaba limitaciones para comunicación service-to-service:
 
-**Alternativas a Considerar:**
+**Problemas del Enfoque JWT:**
+- Background jobs no tienen usuario autenticado
+- Service-to-service debería usar credenciales de servicio, no de usuario
+- El JWT del usuario puede no tener permisos para endpoints internos
+- Requiere propagar el JWT del usuario a través de workers/queues
 
-1. **API Key de Servicio** (Service-to-Service)
-   - Cada microservicio tiene una API Key para autenticarse
-   - Header: `X-Service-API-Key: {key}`
-   - Platform valida que el servicio tiene permisos
-   - Pros: Simple, no requiere usuario
-   - Contras: Gestión de API Keys
+**Solución Implementada: API Key de Servicio**
 
-2. **OAuth2 Client Credentials**
-   - Service token con OAuth2 client credentials flow
-   - Header: `Authorization: Bearer {service_token}`
-   - Tokens con tiempo de vida corto
-   - Pros: Estándar, tokens temporales
-   - Contras: Más complejo
+Se eligió el enfoque de API Key para autenticación service-to-service por su simplicidad y adecuación al caso de uso.
 
-3. **Dual Authentication** (Híbrido)
-   - Soportar ambos: JWT usuario + API Key servicio
-   - Fallback: si no hay JWT, usar service credentials
-   - Pros: Flexible, soporta ambos casos
-   - Contras: Más código, más complejidad
+**Implementación:**
+- `HttpCapabilityProvider` ahora usa `$serviceApiKey` en lugar de `JwtProvider`
+- Header de autenticación: `X-Service-API-Key: {key}`
+- Endpoint interno: `GET /internal/api/v1/users/{userId}/capabilities?platformUid={platformId}`
+- `JwtProvider` interface eliminada (ya no es necesaria en el bundle)
 
-**Decisión Pendiente:**
-- Evaluar si Platform API puede/debe soportar autenticación de servicio
-- Decidir mecanismo: API Key vs Client Credentials vs Dual
-- Implementar abstracción: `AuthProvider` que encapsule ambos métodos
+**Ventajas:**
+- Simple de configurar y gestionar
+- No requiere contexto de usuario
+- Funciona en background jobs, CLI commands, workers
+- Comunicación clara de intención (service-to-service vs user authentication)
 
-**Impacto:**
-- Afecta a: `HttpCapabilityProvider`, `JwtProvider`
-- Posible nueva interface: `ServiceAuthProvider` o `AuthProvider`
-- Cambio en Platform API (endpoint capabilities)
+**Desventajas Aceptadas:**
+- Requiere gestión segura de API Keys (rotación, almacenamiento)
+- No tiene expiración automática (como OAuth2 tokens)
 
-**Acción Recomendada:**
-- Revisar al final del desarrollo
-- Considerar en TASK-008 (configuración del bundle)
-- Documentar en ADR (Architecture Decision Record)
+**Impacto en Tareas Futuras:**
+- **TASK-015 (Platform):** Crear endpoint `/internal/api/v1/users/{userId}/capabilities` que valide `X-Service-API-Key` header
+- **TASK-018+ (Task/Supervisor):** Configurar variable de entorno `PLATFORM_SERVICE_API_KEY`
+
+**Alternativas Consideradas (No Implementadas):**
+1. **OAuth2 Client Credentials:** Más complejo, overhead innecesario para comunicación interna
+2. **Dual Authentication (JWT + API Key):** Mayor complejidad de código, no justificada para el caso de uso
 
 ---
 
 ## Referencias
 
 - TASK-007: Implementación de HttpCapabilityProvider
-- ADR-XXX: (pendiente) Service-to-Service Authentication Strategy
+- TASK-009: Refactorización a API Key (service-to-service authentication)
+- ADR-001: Service-to-Service Authentication Strategy (API Key)

@@ -6,7 +6,6 @@ namespace Tests\Authorization\Infrastructure;
 
 use Iseazy\Security\Authorization\Domain\Exception\CapabilityProviderUnavailableException;
 use Iseazy\Security\Authorization\Domain\Model\Capabilities;
-use Iseazy\Security\Authorization\Domain\Service\JwtProvider;
 use Iseazy\Security\Authorization\Infrastructure\HttpCapabilityProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -26,11 +25,11 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  * - Handle HTTP errors appropriately (401, 403, 4xx, 5xx)
  * - Implement retry logic for transient failures (timeout, 5xx)
  * - Validate and parse JSON responses
- * - Send correct headers (Authorization, Accept)
- * - Build correct URLs with query parameters
+ * - Send correct headers (X-Service-API-Key, Accept)
+ * - Build correct URLs with userId in path and platformId in query parameters
  * - Fail-closed on all error scenarios
  * - Log errors with appropriate severity (WARNING for 401/403, ERROR for others)
- * - Truncate JWT in logs to prevent token leakage
+ * - Use service-to-service API Key authentication
  *
  * Coverage target: >90%
  */
@@ -39,14 +38,12 @@ final class HttpCapabilityProviderTest extends TestCase
     private const string PLATFORM_URL = 'https://platform.iseazy.test';
     private const string USER_ID = 'user-123';
     private const string PLATFORM_ID = 'platform-456';
-    private const string JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.signature';
+    private const string SERVICE_API_KEY = 'test-service-api-key-12345';
 
-    private JwtProvider $jwtProvider;
     private LoggerInterface $logger;
 
     protected function setUp(): void
     {
-        $this->jwtProvider = $this->createMock(JwtProvider::class);
         $this->logger = $this->createMock(LoggerInterface::class);
     }
 
@@ -54,10 +51,6 @@ final class HttpCapabilityProviderTest extends TestCase
     public function testReturnsCapabilitiesOn200Ok(): void
     {
         // ARRANGE
-        $this->jwtProvider
-            ->method('currentJwt')
-            ->willReturn(self::JWT_TOKEN);
-
         $responseBody = json_encode([
             'capabilities' => [
                 [
@@ -78,7 +71,7 @@ final class HttpCapabilityProviderTest extends TestCase
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
-            jwtProvider: $this->jwtProvider,
+            serviceApiKey: self::SERVICE_API_KEY,
             httpClient: $httpClient,
             logger: $this->logger,
         );
@@ -97,10 +90,6 @@ final class HttpCapabilityProviderTest extends TestCase
     public function testThrowsOn401(): void
     {
         // ARRANGE
-        $this->jwtProvider
-            ->method('currentJwt')
-            ->willReturn(self::JWT_TOKEN);
-
         $this->logger
             ->expects($this->once())
             ->method('warning')
@@ -109,8 +98,7 @@ final class HttpCapabilityProviderTest extends TestCase
                 $this->callback(function (array $context) {
                     return $context['status_code'] === 401
                         && $context['user_id'] === self::USER_ID
-                        && $context['platform_id'] === self::PLATFORM_ID
-                        && str_starts_with($context['jwt_preview'], 'eyJhbGciOi');
+                        && $context['platform_id'] === self::PLATFORM_ID;
                 })
             );
 
@@ -119,7 +107,7 @@ final class HttpCapabilityProviderTest extends TestCase
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
-            jwtProvider: $this->jwtProvider,
+            serviceApiKey: self::SERVICE_API_KEY,
             httpClient: $httpClient,
             logger: $this->logger,
         );
@@ -136,10 +124,6 @@ final class HttpCapabilityProviderTest extends TestCase
     public function testThrowsOn403(): void
     {
         // ARRANGE
-        $this->jwtProvider
-            ->method('currentJwt')
-            ->willReturn(self::JWT_TOKEN);
-
         $this->logger
             ->expects($this->once())
             ->method('warning')
@@ -150,7 +134,7 @@ final class HttpCapabilityProviderTest extends TestCase
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
-            jwtProvider: $this->jwtProvider,
+            serviceApiKey: self::SERVICE_API_KEY,
             httpClient: $httpClient,
             logger: $this->logger,
         );
@@ -166,10 +150,6 @@ final class HttpCapabilityProviderTest extends TestCase
     public function testRetriesOnceOnTimeout(): void
     {
         // ARRANGE
-        $this->jwtProvider
-            ->method('currentJwt')
-            ->willReturn(self::JWT_TOKEN);
-
         $this->logger
             ->expects($this->exactly(2))
             ->method('error')
@@ -195,7 +175,7 @@ final class HttpCapabilityProviderTest extends TestCase
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
-            jwtProvider: $this->jwtProvider,
+            serviceApiKey: self::SERVICE_API_KEY,
             httpClient: $httpClient,
             logger: $this->logger,
         );
@@ -211,10 +191,6 @@ final class HttpCapabilityProviderTest extends TestCase
     public function testRetriesOnceOn500(): void
     {
         // ARRANGE
-        $this->jwtProvider
-            ->method('currentJwt')
-            ->willReturn(self::JWT_TOKEN);
-
         $this->logger
             ->expects($this->exactly(2))
             ->method('error')
@@ -237,7 +213,7 @@ final class HttpCapabilityProviderTest extends TestCase
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
-            jwtProvider: $this->jwtProvider,
+            serviceApiKey: self::SERVICE_API_KEY,
             httpClient: $httpClient,
             logger: $this->logger,
         );
@@ -253,10 +229,6 @@ final class HttpCapabilityProviderTest extends TestCase
     public function testSucceedsOnSecondAttemptAfter500(): void
     {
         // ARRANGE
-        $this->jwtProvider
-            ->method('currentJwt')
-            ->willReturn(self::JWT_TOKEN);
-
         $this->logger
             ->expects($this->once())
             ->method('error')
@@ -271,7 +243,7 @@ final class HttpCapabilityProviderTest extends TestCase
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
-            jwtProvider: $this->jwtProvider,
+            serviceApiKey: self::SERVICE_API_KEY,
             httpClient: $httpClient,
             logger: $this->logger,
         );
@@ -288,10 +260,6 @@ final class HttpCapabilityProviderTest extends TestCase
     public function testThrowsOnMalformedJson(): void
     {
         // ARRANGE
-        $this->jwtProvider
-            ->method('currentJwt')
-            ->willReturn(self::JWT_TOKEN);
-
         $this->logger
             ->expects($this->once())
             ->method('error')
@@ -302,7 +270,7 @@ final class HttpCapabilityProviderTest extends TestCase
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
-            jwtProvider: $this->jwtProvider,
+            serviceApiKey: self::SERVICE_API_KEY,
             httpClient: $httpClient,
             logger: $this->logger,
         );
@@ -318,10 +286,6 @@ final class HttpCapabilityProviderTest extends TestCase
     public function testThrowsOnMissingCapabilitiesField(): void
     {
         // ARRANGE
-        $this->jwtProvider
-            ->method('currentJwt')
-            ->willReturn(self::JWT_TOKEN);
-
         $this->logger
             ->expects($this->once())
             ->method('error')
@@ -332,7 +296,7 @@ final class HttpCapabilityProviderTest extends TestCase
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
-            jwtProvider: $this->jwtProvider,
+            serviceApiKey: self::SERVICE_API_KEY,
             httpClient: $httpClient,
             logger: $this->logger,
         );
@@ -345,17 +309,13 @@ final class HttpCapabilityProviderTest extends TestCase
     }
 
     #[Test]
-    public function testSendsJwtInAuthorizationHeader(): void
+    public function testSendsApiKeyInHeader(): void
     {
         // ARRANGE
-        $this->jwtProvider
-            ->method('currentJwt')
-            ->willReturn(self::JWT_TOKEN);
-
         $requestCallback = function (string $method, string $url, array $options) {
             $this->assertArrayHasKey('headers', $options);
-            $this->assertArrayHasKey('Authorization', $options['headers']);
-            $this->assertEquals('Bearer ' . self::JWT_TOKEN, $options['headers']['Authorization']);
+            $this->assertArrayHasKey('X-Service-API-Key', $options['headers']);
+            $this->assertEquals(self::SERVICE_API_KEY, $options['headers']['X-Service-API-Key']);
             $this->assertEquals('application/json', $options['headers']['Accept']);
 
             return new MockResponse(json_encode(['capabilities' => []]), ['http_code' => 200]);
@@ -365,7 +325,7 @@ final class HttpCapabilityProviderTest extends TestCase
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
-            jwtProvider: $this->jwtProvider,
+            serviceApiKey: self::SERVICE_API_KEY,
             httpClient: $httpClient,
             logger: $this->logger,
         );
@@ -377,15 +337,11 @@ final class HttpCapabilityProviderTest extends TestCase
     }
 
     #[Test]
-    public function testSendsPlatformIdInQueryString(): void
+    public function testSendsUserIdInPathAndPlatformIdInQueryString(): void
     {
         // ARRANGE
-        $this->jwtProvider
-            ->method('currentJwt')
-            ->willReturn(self::JWT_TOKEN);
-
         $requestCallback = function (string $method, string $url, array $options) {
-            $expectedUrl = self::PLATFORM_URL . '/api/v1/user/me/capabilities?platformUid=' . urlencode(self::PLATFORM_ID);
+            $expectedUrl = self::PLATFORM_URL . '/internal/api/v1/users/' . urlencode(self::USER_ID) . '/capabilities?platformUid=' . urlencode(self::PLATFORM_ID);
             $this->assertEquals($expectedUrl, $url);
             $this->assertEquals('GET', $method);
 
@@ -396,7 +352,7 @@ final class HttpCapabilityProviderTest extends TestCase
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
-            jwtProvider: $this->jwtProvider,
+            serviceApiKey: self::SERVICE_API_KEY,
             httpClient: $httpClient,
             logger: $this->logger,
         );
@@ -408,49 +364,13 @@ final class HttpCapabilityProviderTest extends TestCase
     }
 
     #[Test]
-    public function testThrowsWhenNoJwtAvailable(): void
-    {
-        // ARRANGE
-        $this->jwtProvider
-            ->method('currentJwt')
-            ->willReturn(null);
-
-        $this->logger
-            ->expects($this->once())
-            ->method('error')
-            ->with('http_capability_provider_no_jwt', $this->anything());
-
-        $httpClient = $this->createMock(HttpClientInterface::class);
-        $httpClient
-            ->expects($this->never())
-            ->method('request');
-
-        $provider = new HttpCapabilityProvider(
-            platformUrl: self::PLATFORM_URL,
-            jwtProvider: $this->jwtProvider,
-            httpClient: $httpClient,
-            logger: $this->logger,
-        );
-
-        // ASSERT
-        $this->expectException(CapabilityProviderUnavailableException::class);
-
-        // ACT
-        $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
-    }
-
-    #[Test]
     public function testHandlesTrailingSlashInPlatformUrl(): void
     {
         // ARRANGE
-        $this->jwtProvider
-            ->method('currentJwt')
-            ->willReturn(self::JWT_TOKEN);
-
         $requestCallback = function (string $method, string $url, array $options) {
             // URL should NOT have double slashes
             $this->assertStringNotContainsString('//', substr($url, 8)); // Skip https://
-            $this->assertStringContainsString('/api/v1/user/me/capabilities', $url);
+            $this->assertStringContainsString('/internal/api/v1/users/', $url);
 
             return new MockResponse(json_encode(['capabilities' => []]), ['http_code' => 200]);
         };
@@ -459,7 +379,7 @@ final class HttpCapabilityProviderTest extends TestCase
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL . '/', // With trailing slash
-            jwtProvider: $this->jwtProvider,
+            serviceApiKey: self::SERVICE_API_KEY,
             httpClient: $httpClient,
             logger: $this->logger,
         );

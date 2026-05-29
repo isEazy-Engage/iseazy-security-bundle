@@ -7,7 +7,6 @@ namespace Iseazy\Security\Authorization\Infrastructure;
 use Iseazy\Security\Authorization\Domain\Exception\CapabilityProviderUnavailableException;
 use Iseazy\Security\Authorization\Domain\Model\Capabilities;
 use Iseazy\Security\Authorization\Domain\Service\CapabilityProvider;
-use Iseazy\Security\Authorization\Domain\Service\JwtProvider;
 use JsonException;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -20,23 +19,28 @@ use Throwable;
 /**
  * HTTP-based capability provider that fetches capabilities from Platform API.
  *
- * This implementation calls the Platform microservice's public endpoint
- * GET /api/v1/user/me/capabilities to retrieve user capabilities. It is designed
- * for use by Task and Supervisor microservices that don't have direct database access.
+ * This implementation calls the Platform microservice's internal endpoint
+ * GET /internal/api/v1/users/{userId}/capabilities to retrieve user capabilities.
+ * It is designed for use by Task and Supervisor microservices that don't have
+ * direct database access.
+ *
+ * Service-to-Service Authentication:
+ * - Uses API Key authentication via X-Service-API-Key header
+ * - Allows operation in background jobs, CLI commands, and workers
+ * - No user context required (works without JWT)
  *
  * Security Features:
  * - Fail-closed by default: any error throws CapabilityProviderUnavailableException
- * - JWT authentication with Authorization header
+ * - API Key authentication for service-to-service communication
  * - Configurable timeout (default 3 seconds) to prevent blocking
  * - Single retry on timeout or 5xx errors with exponential backoff
- * - Secure logging (JWT is truncated to 10 chars to prevent token leakage)
  *
  * Configuration Example (services.yaml):
  * ```yaml
  * Iseazy\Security\Authorization\Infrastructure\HttpCapabilityProvider:
  *   arguments:
  *     $platformUrl: '%env(PLATFORM_URL)%'
- *     $jwtProvider: '@app.jwt_provider'
+ *     $serviceApiKey: '%env(PLATFORM_SERVICE_API_KEY)%'
  *     $httpClient: '@http_client'
  *     $logger: '@logger'
  *     $timeoutSeconds: 3
@@ -44,19 +48,17 @@ use Throwable;
  * ```
  *
  * @see CapabilityProvider Port interface
- * @see JwtProvider For extracting JWT from current context
  */
 final readonly class HttpCapabilityProvider implements CapabilityProvider
 {
     private const int DEFAULT_TIMEOUT_SECONDS = 3;
     private const int RETRY_BACKOFF_MS = 500;
-    private const int JWT_LOG_TRUNCATE_LENGTH = 10;
 
     /**
      * Creates a new HTTP capability provider.
      *
      * @param string $platformUrl Base URL of the Platform API (e.g., "https://platform.iseazy.com")
-     * @param JwtProvider $jwtProvider Provider for extracting JWT from current context
+     * @param string $serviceApiKey API Key for service-to-service authentication
      * @param HttpClientInterface $httpClient Symfony HTTP client for making requests
      * @param LoggerInterface $logger Logger for error tracking (defaults to NullLogger)
      * @param int $timeoutSeconds Request timeout in seconds (default: 3)
@@ -64,7 +66,7 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
      */
     public function __construct(
         private string $platformUrl,
-        private JwtProvider $jwtProvider,
+        private string $serviceApiKey,
         private HttpClientInterface $httpClient,
         private LoggerInterface $logger = new NullLogger(),
         private int $timeoutSeconds = self::DEFAULT_TIMEOUT_SECONDS,
@@ -75,8 +77,8 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
     /**
      * Retrieves user capabilities from Platform API via HTTP.
      *
-     * Makes a GET request to {platformUrl}/api/v1/user/me/capabilities?platformUid={platformId}
-     * with JWT authentication. Implements retry logic for transient failures.
+     * Makes a GET request to {platformUrl}/internal/api/v1/users/{userId}/capabilities?platformUid={platformId}
+     * with API Key authentication. Implements retry logic for transient failures.
      *
      * Error Handling (Fail-Closed):
      * - 401/403: Throws exception (authentication/authorization failure)
@@ -85,7 +87,7 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
      * - Timeout: Retries once, then throws exception
      * - Invalid JSON: Throws exception (malformed response)
      *
-     * @param string $userId The unique identifier of the user (from JWT)
+     * @param string $userId The unique identifier of the user
      * @param string $platformId The unique identifier of the platform context
      * @param array<string> $roles Optional array of user roles (not used by HTTP provider)
      *
@@ -95,20 +97,10 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
      */
     public function capabilities(string $userId, string $platformId, array $roles = []): Capabilities
     {
-        $jwt = $this->jwtProvider->currentJwt();
-
-        if ($jwt === null) {
-            $this->logger->error('http_capability_provider_no_jwt', [
-                'user_id' => $userId,
-                'platform_id' => $platformId,
-            ]);
-
-            throw CapabilityProviderUnavailableException::unavailable();
-        }
-
         $url = sprintf(
-            '%s/api/v1/user/me/capabilities?platformUid=%s',
+            '%s/internal/api/v1/users/%s/capabilities?platformUid=%s',
             rtrim($this->platformUrl, '/'),
+            urlencode($userId),
             urlencode($platformId)
         );
 
@@ -121,7 +113,7 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
             try {
                 $response = $this->httpClient->request('GET', $url, [
                     'headers' => [
-                        'Authorization' => sprintf('Bearer %s', $jwt),
+                        'X-Service-API-Key' => $this->serviceApiKey,
                         'Accept' => 'application/json',
                     ],
                     'timeout' => $this->timeoutSeconds,
@@ -136,7 +128,7 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
 
                 // Client errors: 4xx (don't retry)
                 if ($statusCode >= 400 && $statusCode < 500) {
-                    $this->logClientError($statusCode, $userId, $platformId, $jwt);
+                    $this->logClientError($statusCode, $userId, $platformId);
 
                     throw CapabilityProviderUnavailableException::unavailable();
                 }
@@ -232,18 +224,14 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
      * @param int $statusCode The HTTP status code
      * @param string $userId The user ID
      * @param string $platformId The platform ID
-     * @param string $jwt The JWT token (will be truncated for logging)
      */
-    private function logClientError(int $statusCode, string $userId, string $platformId, string $jwt): void
+    private function logClientError(int $statusCode, string $userId, string $platformId): void
     {
-        $jwtPreview = substr($jwt, 0, self::JWT_LOG_TRUNCATE_LENGTH) . '...';
-
         if ($statusCode === 401 || $statusCode === 403) {
             $this->logger->warning('http_capability_provider_auth_error', [
                 'user_id' => $userId,
                 'platform_id' => $platformId,
                 'status_code' => $statusCode,
-                'jwt_preview' => $jwtPreview,
             ]);
         } else {
             $this->logger->error('http_capability_provider_client_error', [
