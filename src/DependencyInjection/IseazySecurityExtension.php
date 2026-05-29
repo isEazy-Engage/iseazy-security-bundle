@@ -24,21 +24,24 @@ class IseazySecurityExtension extends Extension
     {
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../../config'));
         $loader->load('services.yaml');
+        $loader->load('authorization.yaml');
 
-        $config = $configs[0] ?? [];
+        $configuration = new Configuration();
+        $config = $this->processConfiguration($configuration, $configs);
 
-        $jwtUserClass = $config['jwt_user_class'] ?? 'null';
+        $jwtUserClass = $config['jwt_user_class'] ?? null;
         $apiKeyUserClass = $config['api_key_user_class'] ?? null;
 
         $container->registerForAutoconfiguration(JwtUserFactoryInterface::class)
             ->addTag('iseazy.security.jwt_factory');
 
-        $container->autowire(JwtAuthenticator::class)
-            ->setArgument('$idamUri', '%env(IDAM_URI)%')
-            ->setArgument('$expectedIssuerUri', '%env(IDAM_EXPECTED_ISSUER_URI)%')
-            ->setArgument('$userFactory', $jwtUserClass)
-            ->addTag('security.authenticator');
-
+        if ($jwtUserClass !== null) {
+            $container->autowire(JwtAuthenticator::class)
+                ->setArgument('$idamUri', '%env(IDAM_URI)%')
+                ->setArgument('$expectedIssuerUri', '%env(IDAM_EXPECTED_ISSUER_URI)%')
+                ->setArgument('$userFactory', $jwtUserClass)
+                ->addTag('security.authenticator');
+        }
 
         if ($apiKeyUserClass !== null) {
             $container->registerForAutoconfiguration(ApiKeyUserFactoryInterface::class)
@@ -49,5 +52,18 @@ class IseazySecurityExtension extends Extension
                 ->setArgument('$userFactory', $apiKeyUserClass)
                 ->addTag('security.authenticator');
         }
+
+        $container->setParameter(
+            'iseazy_security.authorization.http.timeout',
+            $config['authorization']['http']['timeout']
+        );
+        $container->setParameter(
+            'iseazy_security.authorization.http.fail_mode',
+            $config['authorization']['http']['fail_mode']
+        );
+        $container->setParameter(
+            'iseazy_security.authorization.cache.ttl',
+            $config['authorization']['cache']['ttl']
+        );
     }
 }

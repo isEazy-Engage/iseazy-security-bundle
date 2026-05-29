@@ -1,0 +1,27 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    # Domain Service: CapabilityFilter
+    # Public service for filtering restrictive capabilities
+    Iseazy\Security\Authorization\Domain\Service\CapabilityFilter:
+        public: true
+
+    # UI Voter: CapabilityVoter
+    # Integrates capability-based authorization with Symfony Security
+    Iseazy\Security\Authorization\UI\Voter\CapabilityVoter:
+        arguments:
+            $capabilityProvider: '@Iseazy\Security\Authorization\Domain\Service\CapabilityProvider'
+            $logger: '@logger'
+        tags:
+            - { name: security.voter }
+
+    # IMPORTANT: HttpCapabilityProvider and CachedCapabilityProvider are NOT registered by default.
+    # Each consumer must register their own CapabilityProvider implementation based on their role:
+    #
+    # Producer (Platform): Register DatabaseCapabilityProvider locally
+    # Consumer (Task/Supervisor): Register HttpCapabilityProvider + optional CachedCapabilityProvider decorator
+    #
+    # See README.md for configuration examples.
