@@ -10,7 +10,7 @@ use Iseazy\Security\Authorization\Domain\Model\Capabilities;
 use Iseazy\Security\Authorization\Domain\Model\Capability;
 use Iseazy\Security\Authorization\Domain\Model\Scope;
 use Iseazy\Security\Authorization\Domain\Service\CapabilityProvider;
-use Iseazy\Security\Authorization\Infrastructure\Voter\CapabilityVoter;
+use Iseazy\Security\Authorization\UI\Voter\CapabilityVoter;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
