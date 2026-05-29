@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Iseazy\Security\Authorization\Voter;
+namespace Iseazy\Security\Authorization\Infrastructure\Voter;
 
 use Iseazy\Security\Authorization\Domain\Service\AuthorizationUser;
 use Iseazy\Security\Authorization\Domain\Exception\CapabilityProviderUnavailableException;
