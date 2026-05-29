@@ -1,0 +1,42 @@
+name: Publish to GitHub Packages
+
+on:
+  push:
+    tags:
+      - 'v*'  # Se ejecuta cuando creas un tag como v1.0.3, v2.0.0, etc.
+  workflow_dispatch:  # O ejecutar manualmente desde GitHub Actions
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.3
+          tools: composer
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Configure Composer for GitHub Packages
+        env:
+          COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ secrets.GITHUB_TOKEN }}"}}'
+        run: |
+          composer config repositories.packagist.org false
+          composer config repositories.github composer https://composer.pkg.github.com/iseazy
+
+      - name: Install dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Publish package
+        run: |
+          echo "Package published to GitHub Packages"
+          echo "Version: $(composer config version)"

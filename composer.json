@@ -2,6 +2,12 @@
   "name": "iseazy/security",
   "type": "symfony-bundle",
   "version": "1.0.3",
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://composer.pkg.github.com/iseazy"
+    }
+  ],
   "autoload": {
     "psr-4": {
       "Iseazy\\Security\\": "src/"
