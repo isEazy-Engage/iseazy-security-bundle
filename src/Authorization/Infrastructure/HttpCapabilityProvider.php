@@ -203,6 +203,8 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
             }
 
             return Capabilities::fromArray($data['capabilities']);
+        } catch (CapabilityProviderUnavailableException $e) {
+            throw $e;
         } catch (JsonException $e) {
             $this->logger->error('http_capability_provider_json_error', [
                 'error' => $e->getMessage(),

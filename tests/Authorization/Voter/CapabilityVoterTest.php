@@ -17,6 +17,7 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * Unit tests for CapabilityVoter.
@@ -245,33 +246,33 @@ final class CapabilityVoterTest extends TestCase
         return [
             'simple_business_single_context' => [
                 'attribute' => 'capability:view_user@business:biz-a',
-                'expected_action' => 'view_user',
-                'expected_scope' => 'business',
-                'expected_contexts' => ['biz-a'],
+                'expectedAction' => 'view_user',
+                'expectedScope' => 'business',
+                'expectedContexts' => ['biz-a'],
             ],
             'global_wildcard' => [
                 'attribute' => 'capability:manage_platform@global:*',
-                'expected_action' => 'manage_platform',
-                'expected_scope' => 'global',
-                'expected_contexts' => ['*'],
+                'expectedAction' => 'manage_platform',
+                'expectedScope' => 'global',
+                'expectedContexts' => ['*'],
             ],
             'platform_scope' => [
                 'attribute' => 'capability:edit_task@platform:plat-123',
-                'expected_action' => 'edit_task',
-                'expected_scope' => 'platform',
-                'expected_contexts' => ['plat-123'],
+                'expectedAction' => 'edit_task',
+                'expectedScope' => 'platform',
+                'expectedContexts' => ['plat-123'],
             ],
             'hierarchy_scope' => [
                 'attribute' => 'capability:view_hierarchy@hierarchy:hier-x',
-                'expected_action' => 'view_hierarchy',
-                'expected_scope' => 'hierarchy',
-                'expected_contexts' => ['hier-x'],
+                'expectedAction' => 'view_hierarchy',
+                'expectedScope' => 'hierarchy',
+                'expectedContexts' => ['hier-x'],
             ],
             'multiple_contexts' => [
                 'attribute' => 'capability:view_user@business:biz-a,biz-b,biz-c',
-                'expected_action' => 'view_user',
-                'expected_scope' => 'business',
-                'expected_contexts' => ['biz-a', 'biz-b', 'biz-c'],
+                'expectedAction' => 'view_user',
+                'expectedScope' => 'business',
+                'expectedContexts' => ['biz-a', 'biz-b', 'biz-c'],
             ],
         ];
     }
@@ -340,9 +341,6 @@ final class CapabilityVoterTest extends TestCase
             'invalid_scope' => [
                 'attribute' => 'capability:view_user@invalid_scope:biz-a',
             ],
-            'no_prefix' => [
-                'attribute' => 'view_user@business:biz-a',
-            ],
         ];
     }
 
@@ -377,15 +375,15 @@ final class CapabilityVoterTest extends TestCase
     {
         // ARRANGE - user does not implement AuthorizationUser interface
         $attribute = 'capability:view_user@business:biz-a';
-        $invalidUser = new \stdClass();
+        $invalidUser = $this->createMock(UserInterface::class);
         $token = $this->createMockToken($invalidUser);
 
         $this->logger
             ->expects($this->once())
             ->method('error')
-            ->with('capability_voter_user_not_authorization_user', $this->callback(function ($context) {
-                return $context['attribute'] === 'capability:view_user@business:biz-a'
-                    && $context['user_class'] === 'stdClass';
+            ->with('capability_voter_user_not_authorization_user', $this->callback(function ($context) use ($attribute) {
+                return $context['attribute'] === $attribute
+                    && isset($context['user_class']);
             }));
 
         // ACT

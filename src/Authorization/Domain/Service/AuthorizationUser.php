@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Iseazy\Security\Authorization\Domain\Service;
 
+use Symfony\Component\Security\Core\User\UserInterface;
+
 /**
  * Contract for user objects that can be authorized via the CapabilityVoter.
  *
@@ -36,7 +38,7 @@ namespace Iseazy\Security\Authorization\Domain\Service;
  * }
  * ```
  */
-interface AuthorizationUser
+interface AuthorizationUser extends UserInterface
 {
     /**
      * Returns the unique identifier of the user.

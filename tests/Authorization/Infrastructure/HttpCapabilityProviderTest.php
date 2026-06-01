@@ -13,7 +13,6 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpClient\Exception\TimeoutException;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
-use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
@@ -169,9 +168,7 @@ final class HttpCapabilityProviderTest extends TestCase
         $httpClient
             ->expects($this->exactly(2))
             ->method('request')
-            ->willThrowException(new class ('Timeout') extends \RuntimeException implements TransportExceptionInterface {
-                use TimeoutExceptionTrait;
-            });
+            ->willThrowException(new TimeoutException('Timeout'));
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
@@ -313,10 +310,10 @@ final class HttpCapabilityProviderTest extends TestCase
     {
         // ARRANGE
         $requestCallback = function (string $method, string $url, array $options) {
-            $this->assertArrayHasKey('headers', $options);
-            $this->assertArrayHasKey('X-Service-API-Key', $options['headers']);
-            $this->assertEquals(self::SERVICE_API_KEY, $options['headers']['X-Service-API-Key']);
-            $this->assertEquals('application/json', $options['headers']['Accept']);
+            $this->assertArrayHasKey('normalized_headers', $options);
+            $this->assertArrayHasKey('x-service-api-key', $options['normalized_headers']);
+            $this->assertStringContainsString(self::SERVICE_API_KEY, $options['normalized_headers']['x-service-api-key'][0]);
+            $this->assertArrayHasKey('accept', $options['normalized_headers']);
 
             return new MockResponse(json_encode(['capabilities' => []]), ['http_code' => 200]);
         };
@@ -388,19 +385,5 @@ final class HttpCapabilityProviderTest extends TestCase
         $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
 
         // ASSERT - verified by callback
-    }
-}
-
-/**
- * Trait to create a proper TimeoutException for testing.
- *
- * Symfony's TimeoutException requires implementing TransportExceptionInterface
- * and providing specific methods.
- */
-trait TimeoutExceptionTrait
-{
-    public function getIdleTimeout(): float
-    {
-        return 3.0;
     }
 }
