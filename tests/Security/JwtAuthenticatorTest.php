@@ -161,7 +161,12 @@ class JwtAuthenticatorTest extends TestCase
                 return self::$user;
             }
 
-            public function getPlatformId(): string
+            public function userId(): string
+            {
+                return 'a1b2c3d4-0000-0000-0000-000000000000';
+            }
+
+            public function platformId(): string
             {
                 return '3b594402-bda5-4f77-96d4-75f1a964bcbe';
             }
