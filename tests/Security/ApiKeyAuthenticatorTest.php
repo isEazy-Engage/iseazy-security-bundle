@@ -7,6 +7,7 @@ namespace Tests\Security;
 use Iseazy\Security\Security\ApiKeyAuthenticator;
 use Iseazy\Security\Security\ApiKeyUserFactoryInterface;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -25,7 +26,7 @@ class ApiKeyAuthenticatorTest extends TestCase
     protected function setUp(): void
     {
         $this->userFactory = $this->createStub(ApiKeyUserFactoryInterface::class);
-        $this->authenticator = new ApiKeyAuthenticator(self::API_KEY, $this->userFactory::class);
+        $this->authenticator = new ApiKeyAuthenticator(self::API_KEY, $this->userFactory::class, new NullLogger());
     }
 
     public function testSupportsWithApiKeyHeader(): void

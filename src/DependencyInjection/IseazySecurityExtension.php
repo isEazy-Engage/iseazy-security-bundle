@@ -40,7 +40,9 @@ class IseazySecurityExtension extends Extension
                 ->setArgument('$idamUri', '%env(IDAM_URI)%')
                 ->setArgument('$expectedIssuerUri', '%env(IDAM_EXPECTED_ISSUER_URI)%')
                 ->setArgument('$userFactory', $config['jwt']['user_class'])
-                ->addTag('security.authenticator');
+                ->setArgument('$audience', '%env(IDAM_AUDIENCE)%')
+                ->addTag('security.authenticator')
+                ->addTag('monolog.logger', ['channel' => 'security']);
         }
 
         if ($config['api_key']['enabled']) {
@@ -50,7 +52,8 @@ class IseazySecurityExtension extends Extension
             $container->autowire(ApiKeyAuthenticator::class)
                 ->setArgument('$apiKey', '%env(API_KEY)%')
                 ->setArgument('$userFactory', $config['api_key']['user_class'])
-                ->addTag('security.authenticator');
+                ->addTag('security.authenticator')
+                ->addTag('monolog.logger', ['channel' => 'security']);
         }
 
         $container->setParameter(

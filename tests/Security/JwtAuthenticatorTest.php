@@ -5,16 +5,38 @@ declare(strict_types=1);
 namespace Tests\Security;
 
 use Firebase\JWT\JWT;
+use Iseazy\Security\Security\JwtAuthenticator;
 use Iseazy\Security\Security\JwtUserFactoryInterface;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 use Symfony\Component\HttpFoundation\Request;
-use Iseazy\Security\Security\JwtAuthenticator;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class JwtAuthenticatorTest extends TestCase
 {
+    private function createAuthenticator(
+        string $idamUri = 'http://fake-keycloak.test',
+        string $issuerUri = 'http://fake-keycloak.test',
+        ?string $userFactoryClass = null,
+        ?CacheInterface $cache = null,
+        ?HttpClientInterface $httpClient = null
+    ): JwtAuthenticator {
+        $userFactory = $userFactoryClass ?? $this->dummyUserFactory()::class;
+
+        return new JwtAuthenticator(
+            idamUri: $idamUri,
+            expectedIssuerUri: $issuerUri,
+            userFactory: $userFactory,
+            cache: $cache ?? $this->createStub(CacheInterface::class),
+            httpClient: $httpClient ?? $this->createStub(HttpClientInterface::class),
+            logger: new NullLogger(),
+        );
+    }
+
     protected function generateMockToken(): string
     {
         $privateKey = file_get_contents(__DIR__ . '/../config/jwt/private.pem');
@@ -27,15 +49,8 @@ class JwtAuthenticatorTest extends TestCase
             'preferred_username' => 'testuser',
             'platform_id' => '3b594402-bda5-4f77-96d4-75f1a964bcbe',
             'roles' => [
-                'global' => [
-                    "roles" => [
-                        "ROLE_SUPER_ADMIN" => [
-                            "ALL_PERMISSIONS"
-                        ]
-                    ]
-                ],
-                'projects' => [
-                ]
+                'global' => ['roles' => ['ROLE_SUPER_ADMIN' => ['ALL_PERMISSIONS']]],
+                'projects' => [],
             ],
         ];
 
@@ -44,61 +59,30 @@ class JwtAuthenticatorTest extends TestCase
 
     public function testSupportsReturnsFalseWhenNoAuthorizationHeader(): void
     {
-        $userFactory = $this->createStub(JwtUserFactoryInterface::class);
-        $cache = $this->createStub(\Symfony\Contracts\Cache\CacheInterface::class);
-        $authenticator = new JwtAuthenticator(
-            'http://fake-keycloak.test',
-            'http://fake-keycloak.test',
-            $userFactory::class,
-            $cache
-        );
-
+        $authenticator = $this->createAuthenticator();
         $this->assertFalse($authenticator->supports(new Request()));
     }
 
     public function testSupportsReturnsTrueWhenAuthorizationHeaderPresent(): void
     {
-        $userFactory = $this->createStub(JwtUserFactoryInterface::class);
-        $cache = $this->createStub(\Symfony\Contracts\Cache\CacheInterface::class);
-        $authenticator = new JwtAuthenticator(
-            'http://fake-keycloak.test',
-            'http://fake-keycloak.test',
-            $userFactory::class,
-            $cache
-        );
-
-        $request = new Request(server: [
-            'HTTP_AUTHORIZATION' => 'Bearer some.jwt.token',
-        ]);
-
+        $authenticator = $this->createAuthenticator();
+        $request = new Request(server: ['HTTP_AUTHORIZATION' => 'Bearer some.jwt.token']);
         $this->assertTrue($authenticator->supports($request));
     }
 
-    public function testAuthenticateThrowsExceptionWhenHeaderMalformed()
+    public function testAuthenticateThrowsExceptionWhenHeaderMalformed(): void
     {
-        $userFactory = $this->createStub(JwtUserFactoryInterface::class);
-        $cache = $this->createStub(\Symfony\Contracts\Cache\CacheInterface::class);
-        $authenticator = new JwtAuthenticator(
-            'http://fake-keycloak.test',
-            'http://fake-keycloak.test',
-            $userFactory::class,
-            $cache
-        );
-
+        $authenticator = $this->createAuthenticator();
         $request = new Request();
-        $request->headers->set('Authorization', 'Bearer'); // Sin token
+        $request->headers->set('Authorization', 'Bearer');
 
         $this->expectException(AuthenticationException::class);
         $authenticator->authenticate($request);
     }
 
-    public function testAuthenticateThrowsExceptionWhenTokenInvalid()
+    public function testAuthenticateThrowsExceptionWhenTokenInvalid(): void
     {
-        $userFactory = $this->dummyUserFactory();
-        $cache = $this->createStub(\Symfony\Contracts\Cache\CacheInterface::class);
-
-        $authenticator = new JwtAuthenticator('http://idam', 'http://issuer', $userFactory::class, $cache);
-
+        $authenticator = $this->createAuthenticator(idamUri: 'http://idam', issuerUri: 'http://issuer');
         $request = new Request();
         $request->headers->set('Authorization', 'Bearer invalidtoken');
 
@@ -109,12 +93,19 @@ class JwtAuthenticatorTest extends TestCase
     public function testAuthenticateWithValidToken(): void
     {
         $user = $this->createStub(UserInterface::class);
-
         $userFactory = $this->dummyUserFactory($user);
-        $cache = $this->createStub(\Symfony\Contracts\Cache\CacheInterface::class);
+        $cache = $this->createStub(CacheInterface::class);
+        $httpClient = $this->createStub(HttpClientInterface::class);
 
         $authenticator = $this->getMockBuilder(JwtAuthenticator::class)
-            ->setConstructorArgs(['http://fake-keycloak.test', 'http://fake-keycloak.test', $userFactory::class, $cache])
+            ->setConstructorArgs([
+                'http://fake-keycloak.test',
+                'http://fake-keycloak.test',
+                $userFactory::class,
+                $cache,
+                $httpClient,
+                new NullLogger(),
+            ])
             ->onlyMethods(['fetchJwks'])
             ->getMock();
 
