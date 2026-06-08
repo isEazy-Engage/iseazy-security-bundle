@@ -121,7 +121,8 @@ final readonly class Capability
      */
     public function toPsr6Key(): string
     {
-        return sprintf('%s___%s__%s', $this->action, $this->scope->value, implode('__', $this->context));
+        $key = sprintf('%s___%s__%s', $this->action, $this->scope->value, implode('__', $this->context));
+        return str_replace(['{', '}', '(', ')', '/', '\\', '@', ':', '*'], '_', $key);
     }
 
     /**

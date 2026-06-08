@@ -138,11 +138,8 @@ final readonly class Capabilities implements IteratorAggregate, Countable
                 continue;
             }
 
-            // Try all scopes to see if any covers the contextId
-            foreach (Scope::cases() as $scope) {
-                if ($capability->matches($action, $scope, $contextId)) {
-                    return true;
-                }
+            if ($capability->matches($action, $capability->scope(), $contextId)) {
+                return true;
             }
         }
 

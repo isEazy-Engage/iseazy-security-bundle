@@ -128,7 +128,7 @@ final class CapabilityVoter extends Voter
             $capabilities = $this->capabilityProvider->capabilities(
                 $user->userId(),
                 $user->platformId(),
-                $user->roles()
+                $user->getRoles()
             );
 
             // Check if any capability matches the requested action, scope, and any of the context IDs

@@ -448,7 +448,7 @@ final class CapabilityVoterTest extends TestCase
     }
 
     #[Test]
-    public function testGrantsWhenEmptyCapabilitiesCollection(): void
+    public function testDeniesWhenEmptyCapabilitiesCollection(): void
     {
         // ARRANGE
         $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
@@ -495,7 +495,7 @@ final class CapabilityVoterTest extends TestCase
         $user = $this->createStub(AuthorizationUser::class);
         $user->method('userId')->willReturn($userId);
         $user->method('platformId')->willReturn($platformId);
-        $user->method('roles')->willReturn($roles);
+        $user->method('getRoles')->willReturn($roles);
 
         return $user;
     }

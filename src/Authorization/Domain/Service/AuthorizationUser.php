@@ -31,10 +31,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
  *         return $this->platform;
  *     }
  *
- *     public function roles(): array
- *     {
- *         return $this->userRoles;
- *     }
+ *     // getRoles() from UserInterface covers role access
  * }
  * ```
  */
@@ -58,16 +55,4 @@ interface AuthorizationUser extends UserInterface
      * @return string The platform's unique identifier
      */
     public function platformId(): string;
-
-    /**
-     * Returns the roles assigned to this user.
-     *
-     * These roles can be used by CapabilityProvider implementations to
-     * optimize capability resolution or apply role-based filtering.
-     *
-     * Examples: ['ROLE_USER', 'ROLE_PLATFORM_MANAGER', 'ROLE_ADMIN']
-     *
-     * @return string[] Array of role identifiers
-     */
-    public function roles(): array;
 }

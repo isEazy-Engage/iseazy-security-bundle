@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use PHPUnit\Framework\TestCase;
-use Iseazy\Security\IseazySecurityBundle;
 use Iseazy\Security\DependencyInjection\IseazySecurityExtension;
+use Iseazy\Security\IseazySecurityBundle;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
 
-class IseazySecurityBundleTest extends TestCase
+final class IseazySecurityBundleTest extends TestCase
 {
-    public function testGetContainerExtensionReturnsCorrectInstance()
+    #[Test]
+    public function testGetContainerExtensionReturnsCorrectInstance(): void
     {
         $bundle = new IseazySecurityBundle();
         $extension = $bundle->getContainerExtension();

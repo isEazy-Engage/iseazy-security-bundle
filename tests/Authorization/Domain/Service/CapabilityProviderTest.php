@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Iseazy\Security\Tests\Authorization\Domain\Service;
+namespace Tests\Authorization\Domain\Service;
 
 use Iseazy\Security\Authorization\Domain\Model\Capabilities;
 use Iseazy\Security\Authorization\Domain\Service\CapabilityProvider;

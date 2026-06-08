@@ -157,6 +157,7 @@ final class HttpCapabilityProviderTest extends TestCase
             serviceApiKey: self::SERVICE_API_KEY,
             httpClient: $httpClient,
             logger: $this->logger,
+            retryBackoffMs: 0,
         );
 
         // ASSERT
@@ -196,6 +197,7 @@ final class HttpCapabilityProviderTest extends TestCase
             serviceApiKey: self::SERVICE_API_KEY,
             httpClient: $httpClient,
             logger: $this->logger,
+            retryBackoffMs: 0,
         );
 
         // ASSERT
@@ -227,6 +229,7 @@ final class HttpCapabilityProviderTest extends TestCase
             serviceApiKey: self::SERVICE_API_KEY,
             httpClient: $httpClient,
             logger: $this->logger,
+            retryBackoffMs: 0,
         );
 
         // ACT

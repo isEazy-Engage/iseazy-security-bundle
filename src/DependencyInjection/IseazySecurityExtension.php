@@ -9,11 +9,11 @@ use Iseazy\Security\Security\ApiKeyUserFactoryInterface;
 use Iseazy\Security\Security\JwtAuthenticator;
 use Iseazy\Security\Security\JwtUserFactoryInterface;
 use Symfony\Component\Config\FileLocator;
-use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 
-class IseazySecurityExtension extends Extension
+final class IseazySecurityExtension extends Extension
 {
     public function getAlias(): string
     {
@@ -30,6 +30,19 @@ class IseazySecurityExtension extends Extension
 
         if ($config['authorization']['enabled']) {
             $loader->load('authorization.yaml');
+
+            $container->setParameter(
+                'iseazy_security.authorization.http.timeout',
+                $config['authorization']['http']['timeout']
+            );
+            $container->setParameter(
+                'iseazy_security.authorization.http.fail_mode',
+                $config['authorization']['http']['fail_mode']
+            );
+            $container->setParameter(
+                'iseazy_security.authorization.cache.ttl',
+                $config['authorization']['cache']['ttl']
+            );
         }
 
         if ($config['jwt']['enabled']) {
@@ -55,18 +68,5 @@ class IseazySecurityExtension extends Extension
                 ->addTag('security.authenticator')
                 ->addTag('monolog.logger', ['channel' => 'security']);
         }
-
-        $container->setParameter(
-            'iseazy_security.authorization.http.timeout',
-            $config['authorization']['http']['timeout']
-        );
-        $container->setParameter(
-            'iseazy_security.authorization.http.fail_mode',
-            $config['authorization']['http']['fail_mode']
-        );
-        $container->setParameter(
-            'iseazy_security.authorization.cache.ttl',
-            $config['authorization']['cache']['ttl']
-        );
     }
 }

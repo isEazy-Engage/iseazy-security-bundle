@@ -71,6 +71,7 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
         private LoggerInterface $logger = new NullLogger(),
         private int $timeoutSeconds = self::DEFAULT_TIMEOUT_SECONDS,
         private bool $failClosed = true,
+        private int $retryBackoffMs = self::RETRY_BACKOFF_MS,
     ) {
     }
 
@@ -96,6 +97,18 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
      * @throws CapabilityProviderUnavailableException On any error (fail-closed)
      */
     public function capabilities(string $userId, string $platformId, array $roles = []): Capabilities
+    {
+        try {
+            return $this->fetchCapabilities($userId, $platformId);
+        } catch (CapabilityProviderUnavailableException $e) {
+            if (!$this->failClosed) {
+                return Capabilities::empty();
+            }
+            throw $e;
+        }
+    }
+
+    private function fetchCapabilities(string $userId, string $platformId): Capabilities
     {
         $url = sprintf(
             '%s/internal/api/v1/users/%s/capabilities?platformUid=%s',
@@ -144,7 +157,7 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
                     ]);
 
                     if ($attempt < $maxAttempts) {
-                        usleep(self::RETRY_BACKOFF_MS * 1000);
+                        usleep($this->retryBackoffMs * 1000);
                         continue;
                     }
 
@@ -160,7 +173,7 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
                 ]);
 
                 if ($attempt < $maxAttempts) {
-                    usleep(self::RETRY_BACKOFF_MS * 1000);
+                    usleep($this->retryBackoffMs * 1000);
                     continue;
                 }
 
@@ -176,7 +189,7 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
             }
         }
 
-        // Should never reach here, but fail-closed just in case
+        // Should never reach here
         throw CapabilityProviderUnavailableException::unavailable();
     }
 
