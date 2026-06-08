@@ -24,7 +24,7 @@ class ApiKeyAuthenticatorTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->userFactory = $this->createMock(ApiKeyUserFactoryInterface::class);
+        $this->userFactory = $this->createStub(ApiKeyUserFactoryInterface::class);
         $this->authenticator = new ApiKeyAuthenticator(self::API_KEY, $this->userFactory::class);
     }
 
@@ -43,8 +43,7 @@ class ApiKeyAuthenticatorTest extends TestCase
     public function testAuthenticateWithValidApiKey(): void
     {
         $request = new Request([], [], [], [], [], ['HTTP_X_API_KEY' => self::API_KEY]);
-        $user = $this->createMock(UserInterface::class);
-
+        $user = $this->createStub(UserInterface::class);
 
         $passport = $this->authenticator->authenticate($request);
         $passport->addBadge(new UserBadge('api_key_user', fn() => $user));
@@ -79,7 +78,7 @@ class ApiKeyAuthenticatorTest extends TestCase
     public function testOnAuthenticationSuccessReturnsNull(): void
     {
         $request = new Request();
-        $token = $this->createMock(TokenInterface::class);
+        $token = $this->createStub(TokenInterface::class);
         $result = $this->authenticator->onAuthenticationSuccess($request, $token, 'main');
         $this->assertNull($result);
     }
@@ -124,7 +123,6 @@ class ApiKeyAuthenticatorTest extends TestCase
                 return self::$platformId;
             }
 
-            // Métodos de UserInterface
             public function getUserIdentifier(): string
             {
                 return self::$user->getUserIdentifier();

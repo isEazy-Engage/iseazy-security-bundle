@@ -15,20 +15,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
-/**
- * Unit tests for CachedCapabilityProvider.
- *
- * Tests the cached capability provider decorator's ability to:
- * - Cache successful capability lookups with configurable TTL
- * - Return cached results on cache hits (without calling inner provider)
- * - Invoke inner provider on cache misses and store results
- * - NOT cache exceptions from inner provider (fail-closed propagation)
- * - Build PSR-6 compliant cache keys (no prohibited characters)
- * - Handle cache errors gracefully (fail-open on cache, fail-closed on provider)
- * - Serialize and deserialize Capabilities correctly
- *
- * Coverage target: >90%
- */
 final class CachedCapabilityProviderTest extends TestCase
 {
     private const string USER_ID = 'user-123';
@@ -39,7 +25,7 @@ final class CachedCapabilityProviderTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->innerProvider = $this->createMock(CapabilityProvider::class);
+        $this->innerProvider = $this->createStub(CapabilityProvider::class);
         $this->cache = new ArrayAdapter();
     }
 
@@ -47,6 +33,7 @@ final class CachedCapabilityProviderTest extends TestCase
     public function testCacheMissCallsInnerAndCaches(): void
     {
         // ARRANGE
+        $this->innerProvider = $this->createMock(CapabilityProvider::class);
         $capabilities = new Capabilities([
             new Capability('view_user', Scope::BUSINESS, ['biz-a']),
         ]);
@@ -71,7 +58,6 @@ final class CachedCapabilityProviderTest extends TestCase
         $this->assertCount(1, $result);
         $this->assertTrue($result->has('view_user', Scope::BUSINESS, 'biz-a'));
 
-        // Verify it was cached
         $cacheKey = 'capabilities__user__' . self::PLATFORM_ID . '__' . self::USER_ID;
         $item = $this->cache->getItem($cacheKey);
         $this->assertTrue($item->isHit());
@@ -81,11 +67,11 @@ final class CachedCapabilityProviderTest extends TestCase
     public function testCacheHitDoesNotCallInner(): void
     {
         // ARRANGE
+        $this->innerProvider = $this->createMock(CapabilityProvider::class);
         $capabilities = new Capabilities([
             new Capability('edit_user', Scope::GLOBAL, ['*']),
         ]);
 
-        // First call: cache miss, calls inner
         $this->innerProvider
             ->expects($this->once())
             ->method('capabilities')
@@ -96,7 +82,6 @@ final class CachedCapabilityProviderTest extends TestCase
             cache: $this->cache,
         );
 
-        // First call to populate cache
         $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
 
         // ACT - second call should hit cache
@@ -126,13 +111,12 @@ final class CachedCapabilityProviderTest extends TestCase
             cache: $this->cache,
         );
 
-        // First call to cache
         $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
 
         // ACT - second call from cache
         $cachedCapabilities = $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
 
-        // ASSERT - verify deserialization is correct
+        // ASSERT
         $this->assertCount(2, $cachedCapabilities);
         $this->assertTrue($cachedCapabilities->has('view_user', Scope::BUSINESS, 'biz-a'));
         $this->assertTrue($cachedCapabilities->has('view_user', Scope::BUSINESS, 'biz-b'));
@@ -143,6 +127,7 @@ final class CachedCapabilityProviderTest extends TestCase
     public function testExceptionFromInnerNotCached(): void
     {
         // ARRANGE
+        $this->innerProvider = $this->createMock(CapabilityProvider::class);
         $this->innerProvider
             ->expects($this->exactly(2))
             ->method('capabilities')
@@ -181,28 +166,22 @@ final class CachedCapabilityProviderTest extends TestCase
         $provider = new CachedCapabilityProvider(
             inner: $this->innerProvider,
             cache: $this->cache,
-            ttlSeconds: 2, // 2 seconds TTL
+            ttlSeconds: 2,
         );
 
-        // ACT - first call
+        // ACT
         $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
 
-        // Verify cache item has TTL
+        // ASSERT
         $cacheKey = 'capabilities__user__' . self::PLATFORM_ID . '__' . self::USER_ID;
         $item = $this->cache->getItem($cacheKey);
-
-        // ASSERT
         $this->assertTrue($item->isHit());
-
-        // Note: ArrayAdapter doesn't expire items automatically in tests,
-        // but we can verify the TTL was set by checking the item was saved
-        // The actual TTL expiration is tested in integration tests with real cache
     }
 
     #[Test]
     public function testKeyIsPsr6Safe(): void
     {
-        // ARRANGE - User ID and Platform ID with PSR-6 prohibited characters
+        // ARRANGE
         $userIdWithProhibited = 'user@domain:123/test\\space here{x}(y)';
         $platformIdWithProhibited = 'platform,abc@xyz:test';
 
@@ -219,13 +198,12 @@ final class CachedCapabilityProviderTest extends TestCase
             cache: $this->cache,
         );
 
-        // ACT - should not throw PSR-6 invalid key exception
+        // ACT
         $result = $provider->capabilities($userIdWithProhibited, $platformIdWithProhibited);
 
         // ASSERT
         $this->assertInstanceOf(Capabilities::class, $result);
 
-        // Verify the cache key is PSR-6 safe (all prohibited chars replaced with _)
         $expectedKey = 'capabilities__user__platform_abc_xyz_test__user_domain_123_test_space_here_x__y_';
         $item = $this->cache->getItem($expectedKey);
         $this->assertTrue($item->isHit());
@@ -239,27 +217,21 @@ final class CachedCapabilityProviderTest extends TestCase
         $userIdWithChar = 'user' . $char . '123';
         $platformIdWithChar = 'platform' . $char . 'abc';
 
-        $capabilities = Capabilities::empty();
-
         $this->innerProvider
             ->method('capabilities')
-            ->willReturn($capabilities);
+            ->willReturn(Capabilities::empty());
 
         $provider = new CachedCapabilityProvider(
             inner: $this->innerProvider,
             cache: $this->cache,
         );
 
-        // ACT - should not throw exception
+        // ACT & ASSERT - should not throw exception
         $provider->capabilities($userIdWithChar, $platformIdWithChar);
-
-        // ASSERT - no exception means key is valid
         $this->assertTrue(true);
     }
 
     /**
-     * Provides PSR-6 prohibited characters for testing.
-     *
      * @return array<string, array<string>>
      */
     public static function psr6ProhibitedCharactersProvider(): array
@@ -282,6 +254,7 @@ final class CachedCapabilityProviderTest extends TestCase
     public function testDifferentUsersHaveDifferentCacheKeys(): void
     {
         // ARRANGE
+        $this->innerProvider = $this->createMock(CapabilityProvider::class);
         $user1Capabilities = new Capabilities([
             new Capability('view_user', Scope::BUSINESS, ['biz-a']),
         ]);
@@ -318,6 +291,7 @@ final class CachedCapabilityProviderTest extends TestCase
     public function testDifferentPlatformsHaveDifferentCacheKeys(): void
     {
         // ARRANGE
+        $this->innerProvider = $this->createMock(CapabilityProvider::class);
         $platform1Capabilities = new Capabilities([
             new Capability('view_user', Scope::BUSINESS, ['biz-a']),
         ]);
@@ -354,11 +328,9 @@ final class CachedCapabilityProviderTest extends TestCase
     public function testCustomKeyPrefixIsUsed(): void
     {
         // ARRANGE
-        $capabilities = Capabilities::empty();
-
         $this->innerProvider
             ->method('capabilities')
-            ->willReturn($capabilities);
+            ->willReturn(Capabilities::empty());
 
         $customPrefix = 'my_custom_prefix';
 
@@ -381,22 +353,19 @@ final class CachedCapabilityProviderTest extends TestCase
     public function testEmptyCapabilitiesAreCached(): void
     {
         // ARRANGE
-        $emptyCapabilities = Capabilities::empty();
-
+        $this->innerProvider = $this->createMock(CapabilityProvider::class);
         $this->innerProvider
             ->expects($this->once())
             ->method('capabilities')
-            ->willReturn($emptyCapabilities);
+            ->willReturn(Capabilities::empty());
 
         $provider = new CachedCapabilityProvider(
             inner: $this->innerProvider,
             cache: $this->cache,
         );
 
-        // ACT - first call
+        // ACT
         $result1 = $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
-
-        // Second call should use cache (inner not called again)
         $result2 = $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
 
         // ASSERT

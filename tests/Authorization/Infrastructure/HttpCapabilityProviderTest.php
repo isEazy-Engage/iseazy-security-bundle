@@ -14,24 +14,7 @@ use Symfony\Component\HttpClient\Exception\TimeoutException;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
-use Symfony\Contracts\HttpClient\ResponseInterface;
 
-/**
- * Unit tests for HttpCapabilityProvider.
- *
- * Tests the HTTP capability provider's ability to:
- * - Successfully fetch and deserialize capabilities from Platform API
- * - Handle HTTP errors appropriately (401, 403, 4xx, 5xx)
- * - Implement retry logic for transient failures (timeout, 5xx)
- * - Validate and parse JSON responses
- * - Send correct headers (X-Service-API-Key, Accept)
- * - Build correct URLs with userId in path and platformId in query parameters
- * - Fail-closed on all error scenarios
- * - Log errors with appropriate severity (WARNING for 401/403, ERROR for others)
- * - Use service-to-service API Key authentication
- *
- * Coverage target: >90%
- */
 final class HttpCapabilityProviderTest extends TestCase
 {
     private const string PLATFORM_URL = 'https://platform.iseazy.test';
@@ -43,7 +26,7 @@ final class HttpCapabilityProviderTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger = $this->createStub(LoggerInterface::class);
     }
 
     #[Test]
@@ -65,8 +48,7 @@ final class HttpCapabilityProviderTest extends TestCase
             ],
         ]);
 
-        $mockResponse = new MockResponse($responseBody, ['http_code' => 200]);
-        $httpClient = new MockHttpClient($mockResponse);
+        $httpClient = new MockHttpClient(new MockResponse($responseBody, ['http_code' => 200]));
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
@@ -89,6 +71,7 @@ final class HttpCapabilityProviderTest extends TestCase
     public function testThrowsOn401(): void
     {
         // ARRANGE
+        $this->logger = $this->createMock(LoggerInterface::class);
         $this->logger
             ->expects($this->once())
             ->method('warning')
@@ -101,8 +84,7 @@ final class HttpCapabilityProviderTest extends TestCase
                 })
             );
 
-        $mockResponse = new MockResponse('', ['http_code' => 401]);
-        $httpClient = new MockHttpClient($mockResponse);
+        $httpClient = new MockHttpClient(new MockResponse('', ['http_code' => 401]));
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
@@ -123,13 +105,13 @@ final class HttpCapabilityProviderTest extends TestCase
     public function testThrowsOn403(): void
     {
         // ARRANGE
+        $this->logger = $this->createMock(LoggerInterface::class);
         $this->logger
             ->expects($this->once())
             ->method('warning')
             ->with('http_capability_provider_auth_error', $this->anything());
 
-        $mockResponse = new MockResponse('', ['http_code' => 403]);
-        $httpClient = new MockHttpClient($mockResponse);
+        $httpClient = new MockHttpClient(new MockResponse('', ['http_code' => 403]));
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
@@ -149,6 +131,7 @@ final class HttpCapabilityProviderTest extends TestCase
     public function testRetriesOnceOnTimeout(): void
     {
         // ARRANGE
+        $this->logger = $this->createMock(LoggerInterface::class);
         $this->logger
             ->expects($this->exactly(2))
             ->method('error')
@@ -163,7 +146,6 @@ final class HttpCapabilityProviderTest extends TestCase
                 })
             );
 
-        // Create a mock that throws TimeoutException on both attempts
         $httpClient = $this->createMock(HttpClientInterface::class);
         $httpClient
             ->expects($this->exactly(2))
@@ -188,6 +170,7 @@ final class HttpCapabilityProviderTest extends TestCase
     public function testRetriesOnceOn500(): void
     {
         // ARRANGE
+        $this->logger = $this->createMock(LoggerInterface::class);
         $this->logger
             ->expects($this->exactly(2))
             ->method('error')
@@ -203,10 +186,10 @@ final class HttpCapabilityProviderTest extends TestCase
                 })
             );
 
-        // Both attempts return 500
-        $mockResponse1 = new MockResponse('', ['http_code' => 500]);
-        $mockResponse2 = new MockResponse('', ['http_code' => 500]);
-        $httpClient = new MockHttpClient([$mockResponse1, $mockResponse2]);
+        $httpClient = new MockHttpClient([
+            new MockResponse('', ['http_code' => 500]),
+            new MockResponse('', ['http_code' => 500]),
+        ]);
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
@@ -226,6 +209,7 @@ final class HttpCapabilityProviderTest extends TestCase
     public function testSucceedsOnSecondAttemptAfter500(): void
     {
         // ARRANGE
+        $this->logger = $this->createMock(LoggerInterface::class);
         $this->logger
             ->expects($this->once())
             ->method('error')
@@ -233,10 +217,10 @@ final class HttpCapabilityProviderTest extends TestCase
 
         $responseBody = json_encode(['capabilities' => []]);
 
-        // First attempt: 500, second attempt: 200
-        $mockResponse1 = new MockResponse('', ['http_code' => 500]);
-        $mockResponse2 = new MockResponse($responseBody, ['http_code' => 200]);
-        $httpClient = new MockHttpClient([$mockResponse1, $mockResponse2]);
+        $httpClient = new MockHttpClient([
+            new MockResponse('', ['http_code' => 500]),
+            new MockResponse($responseBody, ['http_code' => 200]),
+        ]);
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
@@ -257,13 +241,13 @@ final class HttpCapabilityProviderTest extends TestCase
     public function testThrowsOnMalformedJson(): void
     {
         // ARRANGE
+        $this->logger = $this->createMock(LoggerInterface::class);
         $this->logger
             ->expects($this->once())
             ->method('error')
             ->with('http_capability_provider_json_error', $this->anything());
 
-        $mockResponse = new MockResponse('{ invalid json', ['http_code' => 200]);
-        $httpClient = new MockHttpClient($mockResponse);
+        $httpClient = new MockHttpClient(new MockResponse('{ invalid json', ['http_code' => 200]));
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
@@ -283,13 +267,13 @@ final class HttpCapabilityProviderTest extends TestCase
     public function testThrowsOnMissingCapabilitiesField(): void
     {
         // ARRANGE
+        $this->logger = $this->createMock(LoggerInterface::class);
         $this->logger
             ->expects($this->once())
             ->method('error')
             ->with('http_capability_provider_malformed_response', $this->anything());
 
-        $mockResponse = new MockResponse(json_encode(['data' => 'wrong structure']), ['http_code' => 200]);
-        $httpClient = new MockHttpClient($mockResponse);
+        $httpClient = new MockHttpClient(new MockResponse(json_encode(['data' => 'wrong structure']), ['http_code' => 200]));
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
@@ -318,19 +302,15 @@ final class HttpCapabilityProviderTest extends TestCase
             return new MockResponse(json_encode(['capabilities' => []]), ['http_code' => 200]);
         };
 
-        $httpClient = new MockHttpClient($requestCallback);
-
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
             serviceApiKey: self::SERVICE_API_KEY,
-            httpClient: $httpClient,
+            httpClient: new MockHttpClient($requestCallback),
             logger: $this->logger,
         );
 
-        // ACT
+        // ACT & ASSERT - verified by callback
         $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
-
-        // ASSERT - verified by callback
     }
 
     #[Test]
@@ -345,19 +325,15 @@ final class HttpCapabilityProviderTest extends TestCase
             return new MockResponse(json_encode(['capabilities' => []]), ['http_code' => 200]);
         };
 
-        $httpClient = new MockHttpClient($requestCallback);
-
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
             serviceApiKey: self::SERVICE_API_KEY,
-            httpClient: $httpClient,
+            httpClient: new MockHttpClient($requestCallback),
             logger: $this->logger,
         );
 
-        // ACT
+        // ACT & ASSERT - verified by callback
         $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
-
-        // ASSERT - verified by callback
     }
 
     #[Test]
@@ -365,25 +341,20 @@ final class HttpCapabilityProviderTest extends TestCase
     {
         // ARRANGE
         $requestCallback = function (string $method, string $url, array $options) {
-            // URL should NOT have double slashes
             $this->assertStringNotContainsString('//', substr($url, 8)); // Skip https://
             $this->assertStringContainsString('/internal/api/v1/users/', $url);
 
             return new MockResponse(json_encode(['capabilities' => []]), ['http_code' => 200]);
         };
 
-        $httpClient = new MockHttpClient($requestCallback);
-
         $provider = new HttpCapabilityProvider(
-            platformUrl: self::PLATFORM_URL . '/', // With trailing slash
+            platformUrl: self::PLATFORM_URL . '/',
             serviceApiKey: self::SERVICE_API_KEY,
-            httpClient: $httpClient,
+            httpClient: new MockHttpClient($requestCallback),
             logger: $this->logger,
         );
 
-        // ACT
+        // ACT & ASSERT - verified by callback
         $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
-
-        // ASSERT - verified by callback
     }
 }

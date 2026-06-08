@@ -44,8 +44,8 @@ class JwtAuthenticatorTest extends TestCase
 
     public function testSupportsReturnsFalseWhenNoAuthorizationHeader(): void
     {
-        $userFactory = $this->createMock(JwtUserFactoryInterface::class);
-        $cache = $this->createMock(\Symfony\Contracts\Cache\CacheInterface::class);
+        $userFactory = $this->createStub(JwtUserFactoryInterface::class);
+        $cache = $this->createStub(\Symfony\Contracts\Cache\CacheInterface::class);
         $authenticator = new JwtAuthenticator(
             'http://fake-keycloak.test',
             'http://fake-keycloak.test',
@@ -53,16 +53,13 @@ class JwtAuthenticatorTest extends TestCase
             $cache
         );
 
-        $request = new Request();
-
-        $this->assertFalse($authenticator->supports($request));
+        $this->assertFalse($authenticator->supports(new Request()));
     }
 
     public function testSupportsReturnsTrueWhenAuthorizationHeaderPresent(): void
     {
-        $userFactory = $this->createMock(JwtUserFactoryInterface::class);
-        $cache = $this->createMock(\Symfony\Contracts\Cache\CacheInterface::class);
-
+        $userFactory = $this->createStub(JwtUserFactoryInterface::class);
+        $cache = $this->createStub(\Symfony\Contracts\Cache\CacheInterface::class);
         $authenticator = new JwtAuthenticator(
             'http://fake-keycloak.test',
             'http://fake-keycloak.test',
@@ -79,9 +76,8 @@ class JwtAuthenticatorTest extends TestCase
 
     public function testAuthenticateThrowsExceptionWhenHeaderMalformed()
     {
-        $userFactory = $this->createMock(JwtUserFactoryInterface::class);
-        $cache = $this->createMock(\Symfony\Contracts\Cache\CacheInterface::class);
-
+        $userFactory = $this->createStub(JwtUserFactoryInterface::class);
+        $cache = $this->createStub(\Symfony\Contracts\Cache\CacheInterface::class);
         $authenticator = new JwtAuthenticator(
             'http://fake-keycloak.test',
             'http://fake-keycloak.test',
@@ -99,8 +95,7 @@ class JwtAuthenticatorTest extends TestCase
     public function testAuthenticateThrowsExceptionWhenTokenInvalid()
     {
         $userFactory = $this->dummyUserFactory();
-        $cache = $this->createMock(\Symfony\Contracts\Cache\CacheInterface::class);
-
+        $cache = $this->createStub(\Symfony\Contracts\Cache\CacheInterface::class);
 
         $authenticator = new JwtAuthenticator('http://idam', 'http://issuer', $userFactory::class, $cache);
 
@@ -113,26 +108,22 @@ class JwtAuthenticatorTest extends TestCase
 
     public function testAuthenticateWithValidToken(): void
     {
-        // Creamos un User de prueba
-        $user = $this->createMock(UserInterface::class);
+        $user = $this->createStub(UserInterface::class);
 
         $userFactory = $this->dummyUserFactory($user);
-        $cache = $this->createMock(\Symfony\Contracts\Cache\CacheInterface::class);
+        $cache = $this->createStub(\Symfony\Contracts\Cache\CacheInterface::class);
 
         $authenticator = $this->getMockBuilder(JwtAuthenticator::class)
-            ->setConstructorArgs(['http://fake-keycloak.test', 'http://fake-keycloak.test', $userFactory::class, $cache]
-            )
+            ->setConstructorArgs(['http://fake-keycloak.test', 'http://fake-keycloak.test', $userFactory::class, $cache])
             ->onlyMethods(['fetchJwks'])
             ->getMock();
 
-        $authenticator->method('fetchJwks')->willReturn(
+        $authenticator->expects($this->once())->method('fetchJwks')->willReturn(
             json_decode(file_get_contents(__DIR__ . '/../config/jwt/test-jwks.json'), true, 512)
         );
 
-        $token = $this->generateMockToken();
-
         $request = new Request();
-        $request->headers->set('Authorization', 'Bearer ' . $token);
+        $request->headers->set('Authorization', 'Bearer ' . $this->generateMockToken());
 
         $passport = $authenticator->authenticate($request);
 
@@ -185,7 +176,6 @@ class JwtAuthenticatorTest extends TestCase
 
             public function eraseCredentials(): void
             {
-                return;
             }
 
             public function getUserIdentifier(): string

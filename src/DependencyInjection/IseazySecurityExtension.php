@@ -24,32 +24,32 @@ class IseazySecurityExtension extends Extension
     {
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../../config'));
         $loader->load('services.yaml');
-        $loader->load('authorization.yaml');
 
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
 
-        $jwtUserClass = $config['jwt_user_class'] ?? null;
-        $apiKeyUserClass = $config['api_key_user_class'] ?? null;
+        if ($config['authorization']['enabled']) {
+            $loader->load('authorization.yaml');
+        }
 
-        $container->registerForAutoconfiguration(JwtUserFactoryInterface::class)
-            ->addTag('iseazy.security.jwt_factory');
+        if ($config['jwt']['enabled']) {
+            $container->registerForAutoconfiguration(JwtUserFactoryInterface::class)
+                ->addTag('iseazy.security.jwt_factory');
 
-        if ($jwtUserClass !== null) {
             $container->autowire(JwtAuthenticator::class)
                 ->setArgument('$idamUri', '%env(IDAM_URI)%')
                 ->setArgument('$expectedIssuerUri', '%env(IDAM_EXPECTED_ISSUER_URI)%')
-                ->setArgument('$userFactory', $jwtUserClass)
+                ->setArgument('$userFactory', $config['jwt']['user_class'])
                 ->addTag('security.authenticator');
         }
 
-        if ($apiKeyUserClass !== null) {
+        if ($config['api_key']['enabled']) {
             $container->registerForAutoconfiguration(ApiKeyUserFactoryInterface::class)
                 ->addTag('iseazy.security.apikey_factory');
 
             $container->autowire(ApiKeyAuthenticator::class)
                 ->setArgument('$apiKey', '%env(API_KEY)%')
-                ->setArgument('$userFactory', $apiKeyUserClass)
+                ->setArgument('$userFactory', $config['api_key']['user_class'])
                 ->addTag('security.authenticator');
         }
 
