@@ -6,6 +6,7 @@ namespace Tests\Authorization\Domain\Service;
 
 use Iseazy\Security\Authorization\Domain\Model\Capabilities;
 use Iseazy\Security\Authorization\Domain\Service\CapabilityProvider;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -25,6 +26,7 @@ final class CapabilityProviderTest extends TestCase
      * - A minimal implementation can return Capabilities::empty()
      * - The method signature is correct
      */
+    #[Test]
     public function testCapabilityProviderInterfaceCanBeImplementedAndReturnsEmptyCapabilities(): void
     {
         // ARRANGE
@@ -55,6 +57,7 @@ final class CapabilityProviderTest extends TestCase
      * - The interface supports returning populated Capabilities
      * - Mock implementations can be used in tests
      */
+    #[Test]
     public function testCapabilityProviderInterfaceCanReturnNonEmptyCapabilities(): void
     {
         // ARRANGE

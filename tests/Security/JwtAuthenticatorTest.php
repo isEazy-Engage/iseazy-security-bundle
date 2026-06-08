@@ -7,6 +7,7 @@ namespace Tests\Security;
 use Firebase\JWT\JWT;
 use Iseazy\Security\Security\JwtAuthenticator;
 use Iseazy\Security\Security\JwtUserFactoryInterface;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\HttpFoundation\Request;
@@ -57,12 +58,14 @@ class JwtAuthenticatorTest extends TestCase
         return JWT::encode($payload, $privateKey, 'RS256', 'test-key');
     }
 
+    #[Test]
     public function testSupportsReturnsFalseWhenNoAuthorizationHeader(): void
     {
         $authenticator = $this->createAuthenticator();
         $this->assertFalse($authenticator->supports(new Request()));
     }
 
+    #[Test]
     public function testSupportsReturnsTrueWhenAuthorizationHeaderPresent(): void
     {
         $authenticator = $this->createAuthenticator();
@@ -70,6 +73,7 @@ class JwtAuthenticatorTest extends TestCase
         $this->assertTrue($authenticator->supports($request));
     }
 
+    #[Test]
     public function testAuthenticateThrowsExceptionWhenHeaderMalformed(): void
     {
         $authenticator = $this->createAuthenticator();
@@ -80,6 +84,7 @@ class JwtAuthenticatorTest extends TestCase
         $authenticator->authenticate($request);
     }
 
+    #[Test]
     public function testAuthenticateThrowsExceptionWhenTokenInvalid(): void
     {
         $authenticator = $this->createAuthenticator(idamUri: 'http://idam', issuerUri: 'http://issuer');
@@ -90,6 +95,7 @@ class JwtAuthenticatorTest extends TestCase
         $authenticator->authenticate($request);
     }
 
+    #[Test]
     public function testAuthenticateWithValidToken(): void
     {
         $user = $this->createStub(UserInterface::class);

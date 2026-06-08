@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Authorization\Domain\Exception;
 
 use Iseazy\Security\Authorization\Domain\Exception\CapabilityProviderUnavailableException;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -24,6 +25,7 @@ final class CapabilityProviderUnavailableExceptionTest extends TestCase
      * - The exception can be thrown and caught
      * - The exception message is always snake_case
      */
+    #[Test]
     public function testCapabilityProviderUnavailableExceptionCanBeInstantiatedAndThrown(): void
     {
         // ARRANGE
@@ -43,6 +45,7 @@ final class CapabilityProviderUnavailableExceptionTest extends TestCase
      * - The exception is a RuntimeException
      * - The exception can be caught as RuntimeException
      */
+    #[Test]
     public function testCapabilityProviderUnavailableExceptionExtendsRuntimeException(): void
     {
         // ARRANGE
@@ -59,6 +62,7 @@ final class CapabilityProviderUnavailableExceptionTest extends TestCase
      * - The exception supports the $previous parameter in named constructor
      * - The previous exception is preserved in the chain
      */
+    #[Test]
     public function testCapabilityProviderUnavailableExceptionCanWrapPreviousException(): void
     {
         // ARRANGE
@@ -80,6 +84,7 @@ final class CapabilityProviderUnavailableExceptionTest extends TestCase
      * - Exception properties are accessible after catching
      * - Message is always snake_case from named constructor
      */
+    #[Test]
     public function testCapabilityProviderUnavailableExceptionCanBeCaughtAndInspected(): void
     {
         // ARRANGE
