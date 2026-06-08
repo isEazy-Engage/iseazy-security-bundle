@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Iseazy\Security\Listener;
 
-use Iseazy\Security\Security\ApiKeyUserFactoryInterface;
-use Iseazy\Security\Security\JwtUserFactoryInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
