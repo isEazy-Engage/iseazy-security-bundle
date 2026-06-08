@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Iseazy\Security\DependencyInjection;
 
+use Iseazy\Security\Listener\GlobalAuthorizationListener;
 use Iseazy\Security\Security\ApiKeyAuthenticator;
 use Iseazy\Security\Security\ApiKeyUserFactoryInterface;
 use Iseazy\Security\Security\JwtAuthenticator;
@@ -43,6 +44,11 @@ final class IseazySecurityExtension extends Extension
                 'iseazy_security.authorization.cache.ttl',
                 $config['authorization']['cache']['ttl']
             );
+        }
+
+        if ($config['jwt']['enabled'] || $config['api_key']['enabled']) {
+            $container->autowire(GlobalAuthorizationListener::class)
+                ->addTag('kernel.event_listener', ['event' => 'kernel.request', 'priority' => -100]);
         }
 
         if ($config['jwt']['enabled']) {
