@@ -9,6 +9,10 @@ services:
     Iseazy\Security\Authorization\Domain\Service\CapabilityFilter:
         public: true
 
+    Iseazy\Security\Authorization\Domain\Service\CapabilityFilterInterface:
+        alias: Iseazy\Security\Authorization\Domain\Service\CapabilityFilter
+        public: true
+
     # UI Voter: CapabilityVoter
     # Integrates capability-based authorization with Symfony Security
     Iseazy\Security\Authorization\UI\Voter\CapabilityVoter:
