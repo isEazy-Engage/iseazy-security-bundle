@@ -149,7 +149,7 @@ public function testDescriptiveName(): void
 - Consumer apps must register their own `CapabilityProvider` implementation
 
 **Environment Variables:**
-- Authentication: `IDAM_URI`, `IDAM_EXPECTER_ISSUER_URI`, `IDAM_AUDIENCE`, `API_KEY`
+- Authentication: `IDAM_URI`, `IDAM_EXPECTED_ISSUER_URI`, `IDAM_AUDIENCE`, `API_KEY`
 - Authorization: `PLATFORM_URL`, `PLATFORM_SERVICE_API_KEY`
 
 ## Two Usage Scenarios

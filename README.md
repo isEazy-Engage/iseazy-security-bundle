@@ -12,24 +12,31 @@ Este paquete proporciona autenticadores para Symfony que permiten validar JWT em
 composer require iseazy/security
 ```
 
-2. Define los parámetros necesarios en tu archivo de configuración:
-   Si usas jwt con keycloak, asegúrate de definir las variables de entorno necesarias en tu archivo `.env`:
+2. Define las variables de entorno necesarias en tu archivo `.env` según los módulos que actives:
 
-- IDAM_URI es la URL de tu servidor Keycloak.
-- IDAM_EXPECTER_ISSUER_URI es la URL de tu aplicación que espera el emisor del JWT.
-- IDAM_AUDIENCE es el público esperado del JWT. Si no esta definido, se usará el valor por defecto `IsEazy`.
+**JWT (Keycloak):**
+- `IDAM_URI` — URL base del servidor Keycloak
+- `IDAM_EXPECTED_ISSUER_URI` — URL del emisor esperado del JWT
+- `IDAM_AUDIENCE` — Audience del JWT (por defecto: `IsEazy`)
+
 ```
 # .env
 IDAM_URI=https://keycloak.example.com
-IDAM_EXPECTER_ISSUER_URI=http://localhost:8118
+IDAM_EXPECTED_ISSUER_URI=http://localhost:8118
 IDAM_AUDIENCE=IsEazy
 ```
 
-Si usas autenticación por API Key, define la clave en tu archivo `.env`:
-
+**API Key:**
 ```
 # .env
 API_KEY=your_api_key_here
+```
+
+**Authorization (módulo de capabilities):**
+```
+# .env
+PLATFORM_URL=https://platform.example.com
+PLATFORM_SERVICE_API_KEY=your-service-api-key-here
 ```
 
 3. Configura el firewall en tu archivo de configuración de seguridad:
@@ -85,13 +92,27 @@ class ApiKeyUserFactory implements ApiKeyUserFactoryInterface
 }
 ```
 
-5. Le indicamos a Symfony que use estas clases como proveedores de usuarios en tu configuración de seguridad:
+5. Crea el archivo de configuración del bundle y activa los módulos que necesites:
 
 ```yaml
-    iseazy_security:
-        jwt_user_class: TaskBundle\Context\User\Domain\Entity\User
-        api_key_user_class: TaskBundle\Context\User\Domain\Entity\ApiKeyUser
+# config/packages/iseazy_security.yaml
+iseazy_security:
+    jwt:
+        enabled: true
+        user_class: App\Context\Security\Domain\Entity\User
+    api_key:
+        enabled: true
+        user_class: App\Context\Security\Domain\Entity\ApiKeyUser
+    authorization:
+        enabled: false   # Activar solo si usas el módulo de capabilities (ver sección Authorization)
+        cache:
+            ttl: 900
+        http:
+            timeout: 3
+            fail_mode: closed
 ```
+
+Cada módulo es independiente: puedes activar solo JWT, solo API Key, solo Authorization, o cualquier combinación.
 
 ---
 
@@ -123,20 +144,27 @@ composer require iseazy/security:^2.0
 
 ### Configuration
 
-The bundle provides default configuration that can be customized:
+Referencia completa de opciones disponibles:
 
 ```yaml
 # config/packages/iseazy_security.yaml
 iseazy_security:
+    jwt:
+        enabled: false                          # Activar autenticador JWT
+        user_class: ~                           # FQCN que implementa JwtUserFactoryInterface
+    api_key:
+        enabled: false                          # Activar autenticador API Key
+        user_class: ~                           # FQCN que implementa ApiKeyUserFactoryInterface
     authorization:
+        enabled: false                          # Activar módulo de capabilities
         http:
-            timeout: 3              # HTTP request timeout in seconds (default: 3)
-            fail_mode: closed       # 'closed' (deny on error) or 'open' (allow on error) - default: closed
+            timeout: 3                          # Timeout HTTP en segundos (1-30)
+            fail_mode: closed                   # 'closed' (denegar) o 'open' (permitir) si Platform no responde
         cache:
-            ttl: 900                # Cache TTL in seconds (default: 900 = 15 minutes)
+            ttl: 900                            # TTL de caché en segundos (0 = sin caché)
 ```
 
-To see all available configuration options:
+Para ver la referencia generada por Symfony:
 
 ```bash
 bin/console config:dump-reference iseazy_security
@@ -428,29 +456,44 @@ tail -f var/log/dev.log | grep CapabilityVoter
 
 ### Migration from v1.x to v2.0
 
-**No breaking changes.** v2.0 is fully backward-compatible with v1.x. The `Security\` namespace (JWT/API Key authentication) remains unchanged.
+**Cambio de configuración requerido.** El formato del bloque `iseazy_security` cambió en v2.0.
 
-**To adopt the new Authorization features:**
+**Antes (v1.x):**
+```yaml
+iseazy_security:
+    jwt_user_class: App\Security\User
+    api_key_user_class: App\Security\ApiKeyUser
+```
 
-1. Upgrade to `iseazy/security:^2.0`
-2. Choose your scenario (Producer or Consumer)
-3. Implement and register your `CapabilityProvider`
-4. Make your User class implement `AuthorizationUser`
-5. Use `$this->denyAccessUnlessGranted('capability.name', $subject)` in controllers
+**Después (v2.0):**
+```yaml
+iseazy_security:
+    jwt:
+        enabled: true
+        user_class: App\Security\User
+    api_key:
+        enabled: true
+        user_class: App\Security\ApiKeyUser
+```
 
-**Example Migration:**
+**Para adoptar el módulo de Authorization:**
 
-Before (v1.x):
+1. Actualiza a `iseazy/security:^2.0`
+2. Elige tu escenario (Productor o Consumidor, ver secciones anteriores)
+3. Implementa y registra tu `CapabilityProvider`
+4. Haz que tu clase User implemente `AuthorizationUser`
+5. Activa el módulo: `authorization.enabled: true`
+6. Usa `$this->denyAccessUnlessGranted('capability.name', $subject)` en los controladores
+
+**Antes (v1.x) — check manual:**
 ```php
-// Manual capability check
 if (!$this->userHasCapability($user, 'campaign.edit')) {
     throw new AccessDeniedException();
 }
 ```
 
-After (v2.0):
+**Después (v2.0) — integración con Symfony Security:**
 ```php
-// Symfony Security integration
 $this->denyAccessUnlessGranted('campaign.edit', $campaignId);
 ```
 
