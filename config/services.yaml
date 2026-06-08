@@ -8,3 +8,10 @@ services:
         tags:
             - { name: kernel.event_listener, event: kernel.request, priority: -100 }
 
+    Iseazy\Security\Authorization\Domain\Service\CapabilityFilter:
+        public: true
+
+    Iseazy\Security\Authorization\Domain\Service\CapabilityFilterInterface:
+        alias: Iseazy\Security\Authorization\Domain\Service\CapabilityFilter
+        public: true
+
