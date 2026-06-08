@@ -32,7 +32,7 @@ use Iseazy\Security\Authorization\Domain\Model\Capability;
  *
  * Note: This service is stateless and has no mutable properties.
  */
-final class CapabilityFilter
+final class CapabilityFilter implements CapabilityFilterInterface
 {
     /**
      * Filters out restrictive capabilities when less restrictive ones exist.
