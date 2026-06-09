@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Iseazy\Security\DependencyInjection;
 
 use Iseazy\Security\Authorization\Domain\Service\CapabilityProvider;
+use Iseazy\Security\Authorization\Infrastructure\CachedCapabilityProvider;
+use Iseazy\Security\Authorization\Infrastructure\HttpCapabilityProvider;
 use Iseazy\Security\Authorization\UI\Voter\CapabilityVoter;
 use Iseazy\Security\Listener\GlobalAuthorizationListener;
 use Iseazy\Security\Security\ApiKeyAuthenticator;
@@ -56,6 +58,28 @@ final class IseazySecurityExtension extends Extension
                 'iseazy_security.authorization.cache.ttl',
                 $config['authorization']['cache']['ttl']
             );
+
+            $platformUrl = $config['authorization']['platform_url'];
+            $serviceApiKey = $config['authorization']['service_api_key'];
+
+            if ($platformUrl !== null && $serviceApiKey !== null) {
+                $container->autowire(HttpCapabilityProvider::class)
+                    ->setArgument('$platformUrl', $platformUrl)
+                    ->setArgument('$serviceApiKey', $serviceApiKey)
+                    ->setArgument('$timeoutSeconds', $config['authorization']['http']['timeout'])
+                    ->setArgument('$failClosed', $config['authorization']['http']['fail_mode'] === 'closed');
+
+                $ttl = $config['authorization']['cache']['ttl'];
+                if ($ttl > 0) {
+                    $container->autowire(CachedCapabilityProvider::class)
+                        ->setArgument('$inner', new Reference(HttpCapabilityProvider::class))
+                        ->setArgument('$cache', new Reference('cache.app'))
+                        ->setArgument('$ttlSeconds', $ttl);
+                    $container->setAlias(CapabilityProvider::class, CachedCapabilityProvider::class);
+                } else {
+                    $container->setAlias(CapabilityProvider::class, HttpCapabilityProvider::class);
+                }
+            }
         }
 
         if ($config['jwt']['enabled'] || $config['api_key']['enabled']) {

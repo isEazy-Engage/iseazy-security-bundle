@@ -90,7 +90,7 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
      *
      * @param string $userId The unique identifier of the user
      * @param string $platformId The unique identifier of the platform context
-     * @param array<string> $roles Optional array of user roles (not used by HTTP provider)
+     * @param array<string> $roles User roles forwarded to Platform for Source A capability calculation
      *
      * @return Capabilities The collection of capabilities from Platform API
      *
@@ -99,7 +99,7 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
     public function capabilities(string $userId, string $platformId, array $roles = []): Capabilities
     {
         try {
-            return $this->fetchCapabilities($userId, $platformId);
+            return $this->fetchCapabilities($userId, $platformId, $roles);
         } catch (CapabilityProviderUnavailableException $e) {
             if (!$this->failClosed) {
                 return Capabilities::empty();
@@ -126,7 +126,7 @@ final readonly class HttpCapabilityProvider implements CapabilityProvider
             try {
                 $response = $this->httpClient->request('GET', $url, [
                     'headers' => [
-                        'X-Service-API-Key' => $this->serviceApiKey,
+                        'X-API-Key' => $this->serviceApiKey,
                         'Accept' => 'application/json',
                     ],
                     'timeout' => $this->timeoutSeconds,
