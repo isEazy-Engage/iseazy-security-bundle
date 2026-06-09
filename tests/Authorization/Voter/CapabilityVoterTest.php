@@ -10,6 +10,7 @@ use Iseazy\Security\Authorization\Domain\Model\Capabilities;
 use Iseazy\Security\Authorization\Domain\Model\Capability;
 use Iseazy\Security\Authorization\Domain\Model\Scope;
 use Iseazy\Security\Authorization\Domain\Service\CapabilityProvider;
+use Iseazy\Security\Authorization\Domain\Service\InternalServiceUser;
 use Iseazy\Security\Authorization\UI\Voter\CapabilityVoter;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -465,6 +466,28 @@ final class CapabilityVoterTest extends TestCase
         // ACT & ASSERT
         $result = $this->voter->vote($this->createMockToken($user), null, ['capability:view_user@business:biz-a']);
         $this->assertEquals(VoterInterface::ACCESS_DENIED, $result);
+    }
+
+    #[Test]
+    public function testGrantsAccessToInternalServiceUserWithoutCheckingCapabilities(): void
+    {
+        // ARRANGE
+        $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
+        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+
+        $serviceUser = $this->createStub(InternalServiceUser::class);
+
+        $this->capabilityProvider
+            ->expects($this->never())
+            ->method('capabilities');
+
+        // ACT & ASSERT
+        $result = $this->voter->vote(
+            $this->createMockToken($serviceUser),
+            null,
+            ['capability:view_user@business:biz-a']
+        );
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
     }
 
     #[Test]

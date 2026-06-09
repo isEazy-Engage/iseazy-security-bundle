@@ -8,7 +8,7 @@ use Iseazy\Security\Authorization\Domain\Service\AuthorizationUser;
 use Iseazy\Security\Authorization\Domain\Exception\CapabilityProviderUnavailableException;
 use Iseazy\Security\Authorization\Domain\Model\Scope;
 use Iseazy\Security\Authorization\Domain\Service\CapabilityProvider;
-use Iseazy\Security\Security\ApiKeyUserFactoryInterface;
+use Iseazy\Security\Authorization\Domain\Service\InternalServiceUser;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -106,8 +106,8 @@ final class CapabilityVoter extends Voter
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token): bool
     {
         try {
-            // Internal service accounts (API Key) bypass capability checks
-            if ($token->getUser() instanceof ApiKeyUserFactoryInterface) {
+            // Internal service accounts bypass capability checks
+            if ($token->getUser() instanceof InternalServiceUser) {
                 $this->logger->debug('capability_voter_internal_service_granted', ['attribute' => $attribute]);
                 return true;
             }
