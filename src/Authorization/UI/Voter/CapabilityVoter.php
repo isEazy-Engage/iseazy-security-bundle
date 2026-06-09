@@ -60,8 +60,8 @@ final class CapabilityVoter extends Voter
     private const ATTRIBUTE_PATTERN = '/^capability:([a-z_]+)@(global|platform|business|hierarchy):(.+)$/i';
 
     public function __construct(
-        private readonly CapabilityProvider $capabilityProvider,
-        private readonly bool $votersEnabled = true,
+        private readonly ?CapabilityProvider $capabilityProvider,
+        private readonly bool $voterEnabled = true,
         private readonly LoggerInterface $logger = new NullLogger(),
     ) {}
 
@@ -107,7 +107,7 @@ final class CapabilityVoter extends Voter
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token): bool
     {
         try {
-            if (!$this->votersEnabled) {
+            if ($this->capabilityProvider === null || !$this->voterEnabled) {
                 return true;
             }
 

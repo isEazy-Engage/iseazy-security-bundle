@@ -30,7 +30,10 @@ final class CapabilityVoterTest extends TestCase
     {
         $this->capabilityProvider = $this->createStub(CapabilityProvider::class);
         $this->logger = $this->createStub(LoggerInterface::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
     }
 
     #[Test]
@@ -62,7 +65,10 @@ final class CapabilityVoterTest extends TestCase
     {
         // ARRANGE
         $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $user = $this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_USER']);
         $capabilities = new Capabilities([
@@ -85,7 +91,10 @@ final class CapabilityVoterTest extends TestCase
     {
         // ARRANGE
         $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $user = $this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_USER']);
         $capabilities = new Capabilities([
@@ -108,7 +117,10 @@ final class CapabilityVoterTest extends TestCase
     {
         // ARRANGE
         $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $user = $this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_ADMIN']);
         $capabilities = new Capabilities([
@@ -132,7 +144,10 @@ final class CapabilityVoterTest extends TestCase
         // ARRANGE
         $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
         $this->logger = $this->createMock(LoggerInterface::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $user = $this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_USER']);
 
@@ -157,7 +172,10 @@ final class CapabilityVoterTest extends TestCase
         // ARRANGE
         $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
         $this->logger = $this->createMock(LoggerInterface::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $user = $this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_USER']);
 
@@ -189,7 +207,10 @@ final class CapabilityVoterTest extends TestCase
     ): void {
         // ARRANGE
         $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $user = $this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_USER']);
 
@@ -251,7 +272,10 @@ final class CapabilityVoterTest extends TestCase
     {
         // ARRANGE
         $this->logger = $this->createMock(LoggerInterface::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $attribute = 'capability:invalid-format-without-scope-and-context';
         $user = $this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_USER']);
@@ -275,7 +299,10 @@ final class CapabilityVoterTest extends TestCase
     {
         // ARRANGE
         $this->logger = $this->createMock(LoggerInterface::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $user = $this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_USER']);
 
@@ -318,7 +345,10 @@ final class CapabilityVoterTest extends TestCase
     {
         // ARRANGE
         $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $user = $this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_USER']);
         $capabilities = new Capabilities([
@@ -341,7 +371,10 @@ final class CapabilityVoterTest extends TestCase
     {
         // ARRANGE
         $this->logger = $this->createMock(LoggerInterface::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $attribute = 'capability:view_user@business:biz-a';
         $invalidUser = $this->createStub(UserInterface::class);
@@ -364,7 +397,10 @@ final class CapabilityVoterTest extends TestCase
     {
         // ARRANGE
         $this->logger = $this->createMock(LoggerInterface::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $this->logger
             ->expects($this->once())
@@ -384,7 +420,10 @@ final class CapabilityVoterTest extends TestCase
     {
         // ARRANGE
         $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $user = $this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_USER']);
         $capabilities = new Capabilities([
@@ -407,7 +446,10 @@ final class CapabilityVoterTest extends TestCase
     {
         // ARRANGE
         $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $user = $this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_ADMIN']);
         $capabilities = new Capabilities([
@@ -430,7 +472,10 @@ final class CapabilityVoterTest extends TestCase
     {
         // ARRANGE
         $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $user = $this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_USER']);
         $capabilities = new Capabilities([
@@ -453,7 +498,10 @@ final class CapabilityVoterTest extends TestCase
     {
         // ARRANGE
         $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $user = $this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_USER']);
 
@@ -473,7 +521,10 @@ final class CapabilityVoterTest extends TestCase
     {
         // ARRANGE
         $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $user = $this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_USER']);
         $this->capabilityProvider->expects($this->once())
@@ -502,7 +553,10 @@ final class CapabilityVoterTest extends TestCase
                 'capability_voter_internal_service_granted',
                 ['attribute' => 'capability:admin@global:*']
             );
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $serviceUser = $this->createStub(InternalServiceUser::class);
 
@@ -519,7 +573,10 @@ final class CapabilityVoterTest extends TestCase
     {
         // ARRANGE
         $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
-        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+        $this->voter = new CapabilityVoter(
+            capabilityProvider: $this->capabilityProvider,
+            logger: $this->logger,
+        );
 
         $serviceUser = $this->createStub(InternalServiceUser::class);
 
@@ -539,8 +596,42 @@ final class CapabilityVoterTest extends TestCase
     #[Test]
     public function testVoterConstructorWithDefaultLogger(): void
     {
-        $voter = new CapabilityVoter($this->capabilityProvider);
+        $voter = new CapabilityVoter(capabilityProvider: $this->capabilityProvider);
         $this->assertInstanceOf(CapabilityVoter::class, $voter);
+    }
+
+    #[Test]
+    public function testGrantsAccessWhenProviderIsNull(): void
+    {
+        // ARRANGE — simulates authorization.enabled: false (no CapabilityProvider registered)
+        $voter = new CapabilityVoter(capabilityProvider: null);
+
+        // ACT & ASSERT
+        $result = $voter->vote(
+            $this->createMockToken($this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_USER'])),
+            null,
+            ['capability:view_user@business:biz-a']
+        );
+        $this->assertEquals(VoterInterface::ACCESS_GRANTED, $result);
+    }
+
+    #[Test]
+    public function testGrantsAccessWhenVoterDisabledWithExistingProvider(): void
+    {
+        // ARRANGE — authorization.enabled: true but authorization.voter_enabled: false
+        // Capabilities infrastructure is up, but enforcement is bypassed
+        $provider = $this->createMock(CapabilityProvider::class);
+        $provider->expects($this->never())->method('capabilities');
+
+        $voter = new CapabilityVoter(capabilityProvider: $provider, voterEnabled: false);
+
+        // ACT & ASSERT
+        $result = $voter->vote(
+            $this->createMockToken($this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_USER'])),
+            null,
+            ['capability:view_user@business:biz-a']
+        );
+        $this->assertEquals(VoterInterface::ACCESS_GRANTED, $result);
     }
 
     #[Test]

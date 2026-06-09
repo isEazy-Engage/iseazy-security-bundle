@@ -4,16 +4,6 @@ services:
         autoconfigure: true
         public: false
 
-    # UI Voter: CapabilityVoter
-    # Integrates capability-based authorization with Symfony Security
-    Iseazy\Security\Authorization\UI\Voter\CapabilityVoter:
-        arguments:
-            $capabilityProvider: '@Iseazy\Security\Authorization\Domain\Service\CapabilityProvider'
-            $votersEnabled: '%iseazy_security.authorization.voters_enabled%'
-            $logger: '@logger'
-        tags:
-            - { name: security.voter }
-
     # IMPORTANT: HttpCapabilityProvider and CachedCapabilityProvider are NOT registered by default.
     # Each consumer must register their own CapabilityProvider implementation based on their role:
     #

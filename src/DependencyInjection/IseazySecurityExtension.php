@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Iseazy\Security\DependencyInjection;
 
+use Iseazy\Security\Authorization\Domain\Service\CapabilityProvider;
+use Iseazy\Security\Authorization\UI\Voter\CapabilityVoter;
 use Iseazy\Security\Listener\GlobalAuthorizationListener;
 use Iseazy\Security\Security\ApiKeyAuthenticator;
 use Iseazy\Security\Security\ApiKeyUserFactoryInterface;
@@ -12,6 +14,8 @@ use Iseazy\Security\Security\JwtUserFactoryInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 
 final class IseazySecurityExtension extends Extension
@@ -31,12 +35,15 @@ final class IseazySecurityExtension extends Extension
 
         $loader->load('authorization.yaml');
 
-        $container->setParameter(
-            'iseazy_security.authorization.voters_enabled',
-            $config['authorization']['enabled']
-        );
+        $authorizationEnabled = $config['authorization']['enabled'];
 
-        if ($config['authorization']['enabled']) {
+        $container->autowire(CapabilityVoter::class)
+            ->setArgument('$capabilityProvider', new Reference(CapabilityProvider::class, ContainerInterface::NULL_ON_INVALID_REFERENCE))
+            ->setArgument('$voterEnabled', $config['authorization']['voter_enabled'])
+            ->setArgument('$logger', new Reference('logger'))
+            ->addTag('security.voter');
+
+        if ($authorizationEnabled) {
             $container->setParameter(
                 'iseazy_security.authorization.http.timeout',
                 $config['authorization']['http']['timeout']
