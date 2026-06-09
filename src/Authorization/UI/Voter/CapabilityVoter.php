@@ -61,6 +61,7 @@ final class CapabilityVoter extends Voter
 
     public function __construct(
         private readonly CapabilityProvider $capabilityProvider,
+        private readonly bool $votersEnabled = true,
         private readonly LoggerInterface $logger = new NullLogger(),
     ) {}
 
@@ -106,6 +107,10 @@ final class CapabilityVoter extends Voter
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token): bool
     {
         try {
+            if (!$this->votersEnabled) {
+                return true;
+            }
+
             // Internal service accounts bypass capability checks
             if ($token->getUser() instanceof InternalServiceUser) {
                 $this->logger->debug('capability_voter_internal_service_granted', ['attribute' => $attribute]);

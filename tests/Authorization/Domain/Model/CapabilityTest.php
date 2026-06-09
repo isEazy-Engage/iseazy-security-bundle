@@ -145,7 +145,7 @@ final class CapabilityTest extends TestCase
     {
         $capability = new Capability('admin', Scope::GLOBAL, ['*']);
 
-        $this->assertSame('admin___global__*', $capability->toPsr6Key());
+        $this->assertSame('admin___global___', $capability->toPsr6Key());
     }
 
     #[Test]

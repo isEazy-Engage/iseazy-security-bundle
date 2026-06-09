@@ -29,9 +29,14 @@ final class IseazySecurityExtension extends Extension
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
 
-        if ($config['authorization']['enabled']) {
-            $loader->load('authorization.yaml');
+        $loader->load('authorization.yaml');
 
+        $container->setParameter(
+            'iseazy_security.authorization.voters_enabled',
+            $config['authorization']['enabled']
+        );
+
+        if ($config['authorization']['enabled']) {
             $container->setParameter(
                 'iseazy_security.authorization.http.timeout',
                 $config['authorization']['http']['timeout']

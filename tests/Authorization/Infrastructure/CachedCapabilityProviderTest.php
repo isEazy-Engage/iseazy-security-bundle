@@ -13,6 +13,8 @@ use Iseazy\Security\Authorization\Infrastructure\CachedCapabilityProvider;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Psr\Cache\CacheItemInterface;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
 final class CachedCapabilityProviderTest extends TestCase
@@ -371,5 +373,73 @@ final class CachedCapabilityProviderTest extends TestCase
         // ASSERT
         $this->assertTrue($result1->isEmpty());
         $this->assertTrue($result2->isEmpty());
+    }
+
+    #[Test]
+    public function testInvalidCacheDataFallsBackToInnerProvider(): void
+    {
+        // ARRANGE — cache returns a HIT but with non-array data (corrupted entry)
+        $this->innerProvider = $this->createMock(CapabilityProvider::class);
+        $capabilities = new Capabilities([new Capability('view_user', Scope::BUSINESS, ['biz-a'])]);
+
+        $this->innerProvider
+            ->expects($this->once())
+            ->method('capabilities')
+            ->willReturn($capabilities);
+
+        $invalidItem = $this->createStub(CacheItemInterface::class);
+        $invalidItem->method('isHit')->willReturn(true);
+        $invalidItem->method('get')->willReturn('this-is-not-an-array');
+
+        $writeItem = $this->createStub(CacheItemInterface::class);
+        $writeItem->method('isHit')->willReturn(false);
+
+        $cachePool = $this->createMock(CacheItemPoolInterface::class);
+        $cachePool->expects($this->exactly(2))
+            ->method('getItem')
+            ->willReturnOnConsecutiveCalls($invalidItem, $writeItem);
+        $cachePool->expects($this->once())
+            ->method('deleteItem');
+
+        $provider = new CachedCapabilityProvider(
+            inner: $this->innerProvider,
+            cache: $cachePool,
+        );
+
+        // ACT
+        $result = $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
+
+        // ASSERT
+        $this->assertInstanceOf(Capabilities::class, $result);
+        $this->assertTrue($result->has('view_user', Scope::BUSINESS, 'biz-a'));
+    }
+
+    #[Test]
+    public function testCacheReadErrorFallsBackToInnerProvider(): void
+    {
+        // ARRANGE — cache pool throws on getItem (e.g. Redis connection failure)
+        $this->innerProvider = $this->createMock(CapabilityProvider::class);
+        $capabilities = new Capabilities([new Capability('edit_user', Scope::GLOBAL, ['*'])]);
+
+        $this->innerProvider
+            ->expects($this->once())
+            ->method('capabilities')
+            ->willReturn($capabilities);
+
+        $cachePool = $this->createMock(CacheItemPoolInterface::class);
+        $cachePool->method('getItem')
+            ->willThrowException(new \RuntimeException('Cache connection failed'));
+
+        $provider = new CachedCapabilityProvider(
+            inner: $this->innerProvider,
+            cache: $cachePool,
+        );
+
+        // ACT
+        $result = $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
+
+        // ASSERT — inner provider result returned despite cache failure
+        $this->assertInstanceOf(Capabilities::class, $result);
+        $this->assertTrue($result->has('edit_user', Scope::GLOBAL, '*'));
     }
 }

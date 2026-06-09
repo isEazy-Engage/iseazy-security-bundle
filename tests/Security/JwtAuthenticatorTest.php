@@ -128,6 +128,57 @@ class JwtAuthenticatorTest extends TestCase
         $this->assertSame($user, $passport->getUser());
     }
 
+    #[Test]
+    public function testAuthenticateThrowsExceptionWhenTokenIsEmptyAfterBearer(): void
+    {
+        $authenticator = $this->createAuthenticator();
+        $request = new Request();
+        $request->headers->set('Authorization', 'Bearer ');
+
+        $this->expectException(AuthenticationException::class);
+        $authenticator->authenticate($request);
+    }
+
+    #[Test]
+    public function testOnAuthenticationFailureReturnsUnauthorizedJsonResponse(): void
+    {
+        $authenticator = $this->createAuthenticator();
+        $response = $authenticator->onAuthenticationFailure(
+            new Request(),
+            new AuthenticationException('Invalid JWT Token')
+        );
+
+        $this->assertInstanceOf(\Symfony\Component\HttpFoundation\JsonResponse::class, $response);
+        $this->assertSame(401, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function testStartReturnsAuthenticationRequiredResponse(): void
+    {
+        $authenticator = $this->createAuthenticator();
+        $response = $authenticator->start(new Request());
+
+        $this->assertInstanceOf(\Symfony\Component\HttpFoundation\JsonResponse::class, $response);
+        $this->assertSame(401, $response->getStatusCode());
+        $decoded = json_decode($response->getContent(), true);
+        $this->assertSame('Authentication Required', $decoded['message']);
+    }
+
+    #[Test]
+    public function testConstructorThrowsWhenUserFactoryDoesNotImplementInterface(): void
+    {
+        $this->expectException(\LogicException::class);
+
+        new JwtAuthenticator(
+            idamUri: 'http://idam',
+            expectedIssuerUri: 'http://idam',
+            userFactory: \stdClass::class,
+            cache: $this->createStub(CacheInterface::class),
+            httpClient: $this->createStub(HttpClientInterface::class),
+            logger: new NullLogger(),
+        );
+    }
+
     private function dummyUserFactory(?UserInterface $user = null)
     {
         if (!$user) {

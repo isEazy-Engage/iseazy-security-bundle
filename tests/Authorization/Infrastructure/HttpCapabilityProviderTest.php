@@ -360,4 +360,173 @@ final class HttpCapabilityProviderTest extends TestCase
         // ACT & ASSERT - verified by callback
         $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
     }
+
+    #[Test]
+    public function testReturnsEmptyCapabilitiesInFailOpenModeWhenProviderUnavailable(): void
+    {
+        // ARRANGE
+        $httpClient = new MockHttpClient(new MockResponse('', ['http_code' => 503]));
+
+        $provider = new HttpCapabilityProvider(
+            platformUrl: self::PLATFORM_URL,
+            serviceApiKey: self::SERVICE_API_KEY,
+            httpClient: $httpClient,
+            logger: $this->logger,
+            failClosed: false,
+            retryBackoffMs: 0,
+        );
+
+        // ACT
+        $capabilities = $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
+
+        // ASSERT
+        $this->assertInstanceOf(Capabilities::class, $capabilities);
+        $this->assertTrue($capabilities->isEmpty());
+    }
+
+    #[Test]
+    public function testReturnsEmptyCapabilitiesInFailOpenModeWhenTimeoutOccurs(): void
+    {
+        // ARRANGE
+        $httpClient = $this->createMock(HttpClientInterface::class);
+        $httpClient->method('request')->willThrowException(new TimeoutException('Timeout'));
+
+        $provider = new HttpCapabilityProvider(
+            platformUrl: self::PLATFORM_URL,
+            serviceApiKey: self::SERVICE_API_KEY,
+            httpClient: $httpClient,
+            logger: $this->logger,
+            failClosed: false,
+            retryBackoffMs: 0,
+        );
+
+        // ACT
+        $capabilities = $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
+
+        // ASSERT
+        $this->assertTrue($capabilities->isEmpty());
+    }
+
+    #[Test]
+    public function testSucceedsOnSecondAttemptAfterTimeout(): void
+    {
+        // ARRANGE
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger->expects($this->once())->method('error')
+            ->with('http_capability_provider_timeout', $this->anything());
+
+        $responseBody = json_encode(['capabilities' => [
+            ['capability' => 'view_user', 'scope' => 'business', 'context' => ['biz-a']],
+        ]]);
+
+        $callCount = 0;
+        $httpClient = $this->createMock(HttpClientInterface::class);
+        $httpClient->expects($this->exactly(2))
+            ->method('request')
+            ->willReturnCallback(function () use (&$callCount, $responseBody) {
+                $callCount++;
+                if ($callCount === 1) {
+                    throw new TimeoutException('Timeout on first attempt');
+                }
+                return new MockResponse($responseBody, ['http_code' => 200]);
+            });
+
+        $provider = new HttpCapabilityProvider(
+            platformUrl: self::PLATFORM_URL,
+            serviceApiKey: self::SERVICE_API_KEY,
+            httpClient: $httpClient,
+            logger: $this->logger,
+            retryBackoffMs: 0,
+        );
+
+        // ACT
+        $capabilities = $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
+
+        // ASSERT
+        $this->assertCount(1, $capabilities);
+        $this->assertTrue($capabilities->has('view_user', \Iseazy\Security\Authorization\Domain\Model\Scope::BUSINESS, 'biz-a'));
+    }
+
+    #[Test]
+    public function testThrowsOn404AndLogsAsClientError(): void
+    {
+        // ARRANGE
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger->expects($this->once())->method('error')
+            ->with(
+                'http_capability_provider_client_error',
+                $this->callback(fn(array $ctx) => $ctx['status_code'] === 404)
+            );
+
+        $httpClient = new MockHttpClient(new MockResponse('', ['http_code' => 404]));
+
+        $provider = new HttpCapabilityProvider(
+            platformUrl: self::PLATFORM_URL,
+            serviceApiKey: self::SERVICE_API_KEY,
+            httpClient: $httpClient,
+            logger: $this->logger,
+        );
+
+        // ASSERT
+        $this->expectException(CapabilityProviderUnavailableException::class);
+
+        // ACT
+        $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
+    }
+
+    #[Test]
+    public function testThrowsOnTransportExceptionAndLogsError(): void
+    {
+        // ARRANGE
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger->expects($this->once())->method('error')
+            ->with('http_capability_provider_transport_error', $this->anything());
+
+        $transportException = $this->createMock(
+            \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface::class
+        );
+        $transportException->method('getMessage')->willReturn('Connection refused');
+
+        $httpClient = $this->createMock(HttpClientInterface::class);
+        $httpClient->method('request')->willThrowException($transportException);
+
+        $provider = new HttpCapabilityProvider(
+            platformUrl: self::PLATFORM_URL,
+            serviceApiKey: self::SERVICE_API_KEY,
+            httpClient: $httpClient,
+            logger: $this->logger,
+        );
+
+        // ASSERT
+        $this->expectException(CapabilityProviderUnavailableException::class);
+
+        // ACT
+        $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
+    }
+
+    #[Test]
+    public function testEncodesUserIdWithSpecialCharactersInUrl(): void
+    {
+        // ARRANGE - userId con formato Keycloak: f:realm:uuid
+        $userId = 'f:realm:c34fc026-c263-4a9e-ad0d-98c6d67bf769';
+        $expectedEncodedUserId = urlencode($userId);
+
+        $requestCallback = function (string $method, string $url, array $options) use ($expectedEncodedUserId) {
+            $this->assertStringContainsString(
+                '/internal/api/v1/users/' . $expectedEncodedUserId . '/capabilities',
+                $url
+            );
+            return new MockResponse(json_encode(['capabilities' => []]), ['http_code' => 200]);
+        };
+
+        $provider = new HttpCapabilityProvider(
+            platformUrl: self::PLATFORM_URL,
+            serviceApiKey: self::SERVICE_API_KEY,
+            httpClient: new MockHttpClient($requestCallback),
+            logger: $this->logger,
+        );
+
+        // ACT & ASSERT - verified by callback
+        $provider->capabilities($userId, self::PLATFORM_ID);
+    }
 }

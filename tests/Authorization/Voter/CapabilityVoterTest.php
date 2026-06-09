@@ -469,6 +469,52 @@ final class CapabilityVoterTest extends TestCase
     }
 
     #[Test]
+    public function testGrantsAccessWithUppercaseScopeInAttribute(): void
+    {
+        // ARRANGE
+        $this->capabilityProvider = $this->createMock(CapabilityProvider::class);
+        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+
+        $user = $this->createMockAuthorizationUser('user-123', 'plat-456', ['ROLE_USER']);
+        $this->capabilityProvider->expects($this->once())
+            ->method('capabilities')
+            ->willReturn(new Capabilities([new Capability('view_user', Scope::BUSINESS, ['biz-a'])]));
+
+        // ACT — scope en mayúsculas, el regex acepta esto por el flag /i
+        $result = $this->voter->vote(
+            $this->createMockToken($user),
+            null,
+            ['capability:view_user@BUSINESS:biz-a']
+        );
+
+        // ASSERT
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
+    }
+
+    #[Test]
+    public function testInternalServiceUserBypassIsLogged(): void
+    {
+        // ARRANGE
+        $this->logger = $this->createMock(\Psr\Log\LoggerInterface::class);
+        $this->logger->expects($this->once())
+            ->method('debug')
+            ->with(
+                'capability_voter_internal_service_granted',
+                ['attribute' => 'capability:admin@global:*']
+            );
+        $this->voter = new CapabilityVoter($this->capabilityProvider, $this->logger);
+
+        $serviceUser = $this->createStub(InternalServiceUser::class);
+
+        // ACT
+        $this->voter->vote(
+            $this->createMockToken($serviceUser),
+            null,
+            ['capability:admin@global:*']
+        );
+    }
+
+    #[Test]
     public function testGrantsAccessToInternalServiceUserWithoutCheckingCapabilities(): void
     {
         // ARRANGE

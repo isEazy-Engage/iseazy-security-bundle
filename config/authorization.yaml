@@ -9,6 +9,7 @@ services:
     Iseazy\Security\Authorization\UI\Voter\CapabilityVoter:
         arguments:
             $capabilityProvider: '@Iseazy\Security\Authorization\Domain\Service\CapabilityProvider'
+            $votersEnabled: '%iseazy_security.authorization.voters_enabled%'
             $logger: '@logger'
         tags:
             - { name: security.voter }

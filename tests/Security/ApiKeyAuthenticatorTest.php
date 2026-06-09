@@ -91,4 +91,16 @@ class ApiKeyAuthenticatorTest extends TestCase
         $result = $this->authenticator->onAuthenticationSuccess($request, $token, 'main');
         $this->assertNull($result);
     }
+
+    #[Test]
+    public function testConstructorThrowsWhenUserFactoryDoesNotImplementInterface(): void
+    {
+        $this->expectException(\LogicException::class);
+
+        new ApiKeyAuthenticator(
+            apiKey: 'test-key',
+            userFactory: \stdClass::class,
+            logger: new NullLogger(),
+        );
+    }
 }

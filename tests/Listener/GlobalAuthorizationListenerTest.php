@@ -120,4 +120,33 @@ final class GlobalAuthorizationListenerTest extends TestCase
         $this->listener->onKernelRequest($event);
         $this->addToAssertionCount(1);
     }
+
+    #[Test]
+    public function testThrowsBadRequestForInvalidPlatformUid(): void
+    {
+        // platformUid es la alternativa a platformId
+        $kernel = $this->createStub(HttpKernelInterface::class);
+        $request = new Request(query: ['platformUid' => 'not-a-valid-uuid']);
+        $event = new RequestEvent($kernel, $request, HttpKernelInterface::MAIN_REQUEST);
+
+        $this->expectException(BadRequestException::class);
+        $this->expectExceptionMessage('invalid_uuid');
+
+        $this->listener->onKernelRequest($event);
+    }
+
+    #[Test]
+    public function testPassesWhenPlatformUidIsValidUuid(): void
+    {
+        $kernel = $this->createStub(HttpKernelInterface::class);
+        $request = new Request(query: ['platformUid' => '550e8400-e29b-41d4-a716-446655440000']);
+        $event = new RequestEvent($kernel, $request, HttpKernelInterface::MAIN_REQUEST);
+
+        $user = $this->createStub(UserInterface::class);
+        $user->method('getUserIdentifier')->willReturn('user-abc');
+        $this->security->method('getUser')->willReturn($user);
+
+        $this->listener->onKernelRequest($event);
+        $this->addToAssertionCount(1);
+    }
 }
