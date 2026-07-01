@@ -1,0 +1,13 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    # IMPORTANT: HttpCapabilityProvider and CachedCapabilityProvider are NOT registered by default.
+    # Each consumer must register their own CapabilityProvider implementation based on their role:
+    #
+    # Producer (Platform): Register DatabaseCapabilityProvider locally
+    # Consumer (Task/Supervisor): Register HttpCapabilityProvider + optional CachedCapabilityProvider decorator
+    #
+    # See README.md for configuration examples.
