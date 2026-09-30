@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-09-30
+
+### Fixed
+- `CapabilityFilter` now applies the documented "least restrictive capability wins" rule with the
+  real context model: a PLATFORM capability (context: the platform id) absorbs the BUSINESS and
+  HIERARCHY capabilities (context: business / hierarchy node ids) of the same action. Before, it
+  compared contexts id by id, and a business id is never inside a platform id, so only GLOBAL (`*`)
+  absorbed anything.
+- The rule is now driven by `Scope` (restriction level and `Scope::covers()`): a new scope only has
+  to be declared there to be absorbed by the scopes that cover it. BUSINESS and HIERARCHY still do
+  not absorb each other.
+
+### Changed
+- `CapabilityFilterInterface::filterRestrictive()` documents its precondition: the collection must
+  contain the capabilities of a single platform, because contexts are no longer compared.
+
 ## [2.0.0] - 2026-05-29
 
 ### Added
