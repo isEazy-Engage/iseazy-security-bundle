@@ -95,10 +95,11 @@ final class CapabilityFilterTest extends TestCase
     }
 
     #[Test]
-    public function testShouldKeepPlatformWithSupersetContextAndRemoveBusinessForSameAction(): void
+    public function testShouldKeepPlatformAndRemoveBusinessOfTheSamePlatformForSameAction(): void
     {
-        // ARRANGE - platform with context superset covers business with subset context
-        $platform = new Capability('manage_business', Scope::PLATFORM, ['biz-a', 'biz-b', 'biz-c']);
+        // ARRANGE - real model: platform context is the platform id, business context the business ids.
+        // Contexts are not compared: the collection always belongs to a single platform.
+        $platform = new Capability('manage_business', Scope::PLATFORM, ['plat-123']);
         $business = new Capability('manage_business', Scope::BUSINESS, ['biz-a']);
         $input = new Capabilities([$platform, $business]);
 
@@ -107,25 +108,25 @@ final class CapabilityFilterTest extends TestCase
 
         // ASSERT
         $this->assertCount(1, $result);
-        $this->assertTrue($result->has('manage_business', Scope::PLATFORM, 'biz-a'));
+        $this->assertTrue($result->has('manage_business', Scope::PLATFORM, 'plat-123'));
         $this->assertFalse($result->has('manage_business', Scope::BUSINESS, 'biz-a'));
     }
 
     #[Test]
-    public function testShouldKeepBothWhenPlatformContextDoesNotCoverBusinessContext(): void
+    public function testShouldKeepPlatformAndRemoveHierarchyOfTheSamePlatformForSameAction(): void
     {
-        // ARRANGE - platform with different context doesn't cover business
-        $platform = new Capability('manage_business', Scope::PLATFORM, ['biz-x', 'biz-y']);
-        $business = new Capability('manage_business', Scope::BUSINESS, ['biz-a']);
-        $input = new Capabilities([$platform, $business]);
+        // ARRANGE
+        $platform = new Capability('view_user', Scope::PLATFORM, ['plat-123']);
+        $hierarchy = new Capability('view_user', Scope::HIERARCHY, ['hier-x']);
+        $input = new Capabilities([$platform, $hierarchy]);
 
         // ACT
         $result = $this->filter->filterRestrictive($input);
 
-        // ASSERT - both should be kept because platform context doesn't cover business context
-        $this->assertCount(2, $result);
-        $this->assertTrue($result->has('manage_business', Scope::PLATFORM, 'biz-x'));
-        $this->assertTrue($result->has('manage_business', Scope::BUSINESS, 'biz-a'));
+        // ASSERT
+        $this->assertCount(1, $result);
+        $this->assertTrue($result->has('view_user', Scope::PLATFORM, 'plat-123'));
+        $this->assertFalse($result->has('view_user', Scope::HIERARCHY, 'hier-x'));
     }
 
     #[Test]
@@ -291,24 +292,56 @@ final class CapabilityFilterTest extends TestCase
     }
 
     #[Test]
-    public function testShouldNotRemoveCapabilityWhenLessRestrictiveDoesNotCoverContext(): void
+    public function testShouldNotLetPlatformOfOneActionAbsorbBusinessOfAnotherAction(): void
     {
-        // ARRANGE - platform has different context than business, so it doesn't cover it
-        // This tests the context coverage aspect of the filtering
-        $platform = new Capability('view_user', Scope::PLATFORM, ['plat-456']);
-        $business = new Capability('view_user', Scope::BUSINESS, ['biz-a']);
+        // ARRANGE
+        $platform = new Capability('view_business', Scope::PLATFORM, ['plat-123']);
+        $business = new Capability('manage_enrollment_application', Scope::BUSINESS, ['biz-a']);
         $input = new Capabilities([$platform, $business]);
 
         // ACT
         $result = $this->filter->filterRestrictive($input);
 
         // ASSERT
-        // Platform scope is less restrictive, but if the context doesn't cover business context,
-        // it depends on Capability::covers() implementation which checks both scope AND context
-        // According to Capability::covers(), it needs to check if context covers too
-        // Since platform context ['plat-456'] doesn't contain '*' and doesn't include all business contexts,
-        // the business capability might be kept if covers() considers context
-        $this->assertGreaterThanOrEqual(1, $result->count());
+        $this->assertCount(2, $result);
+        $this->assertTrue($result->has('view_business', Scope::PLATFORM, 'plat-123'));
+        $this->assertTrue($result->has('manage_enrollment_application', Scope::BUSINESS, 'biz-a'));
+    }
+
+    #[Test]
+    public function testShouldKeepOnlyGlobalOverPlatformAndBusinessOfTheSamePlatform(): void
+    {
+        // ARRANGE
+        $input = new Capabilities([
+            new Capability('view_user', Scope::GLOBAL, ['*']),
+            new Capability('view_user', Scope::PLATFORM, ['plat-123']),
+            new Capability('view_user', Scope::BUSINESS, ['biz-a']),
+        ]);
+
+        // ACT
+        $result = $this->filter->filterRestrictive($input);
+
+        // ASSERT
+        $this->assertCount(1, $result);
+        $this->assertTrue($result->has('view_user', Scope::GLOBAL, '*'));
+    }
+
+    #[Test]
+    public function testShouldMergeBusinessesOfTheSameActionIntoOneItem(): void
+    {
+        // ARRANGE
+        $input = new Capabilities([
+            new Capability('view_user', Scope::BUSINESS, ['biz-a']),
+            new Capability('view_user', Scope::BUSINESS, ['biz-b']),
+        ]);
+
+        // ACT
+        $result = $this->filter->filterRestrictive($input);
+
+        // ASSERT
+        $this->assertCount(1, $result);
+        $this->assertTrue($result->has('view_user', Scope::BUSINESS, 'biz-a'));
+        $this->assertTrue($result->has('view_user', Scope::BUSINESS, 'biz-b'));
     }
 
     #[Test]
