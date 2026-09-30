@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `CapabilityFilterInterface::filterRestrictive()` documents its precondition: the collection must
   contain the capabilities of a single platform, because contexts are no longer compared.
+- `composer.json` no longer declares `version`: the version comes from the git tag. A hardcoded
+  version that does not match the tag makes Packagist skip the tag.
 
 ## [2.0.0] - 2026-05-29
 
