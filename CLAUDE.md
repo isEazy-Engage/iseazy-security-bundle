@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**iseazy/security** is a Symfony 6.4 bundle providing authentication and authorization for IsEazy microservices. Current version: 2.0.0
+**iseazy/security** is a Symfony 7.4 bundle providing authentication and authorization for IsEazy microservices. Current version: 3.0.0 (Symfony 7.4). Symfony 6.4 consumers use 2.x
 
-**Stack:** PHP 8.3+, Symfony 6.4, PHPUnit 12.2, PSR-12
+**Stack:** PHP 8.3+, Symfony 7.4, PHPUnit 12.2, PSR-12
 
 **Two Main Features:**
 1. **Authentication** (`Security\` namespace): JWT (Keycloak) + API Key authenticators
@@ -84,7 +84,7 @@ Authorization/
 - Simplifies communication between microservices
 
 **Implementation:**
-- Header: `X-Service-API-Key: {key}`
+- Header: `X-API-Key: {key}`
 - Endpoint: `GET /internal/api/v1/users/{userId}/capabilities?platformUid={platformId}`
 - Config: `PLATFORM_SERVICE_API_KEY` environment variable
 

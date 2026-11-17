@@ -62,7 +62,7 @@ final class Configuration implements ConfigurationInterface
                         ->end()
                         ->scalarNode('service_api_key')
                             ->defaultNull()
-                            ->info('Service API key sent as X-Service-API-Key to the Platform capabilities endpoint')
+                            ->info('Service API key sent as X-API-Key to the Platform capabilities endpoint')
                         ->end()
                         ->arrayNode('http')
                             ->addDefaultsIfNotSet()

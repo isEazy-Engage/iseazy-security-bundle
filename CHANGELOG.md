@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - Unreleased
+
+### Changed
+- **BREAKING:** requires Symfony `^7.4` (Symfony 6.4 is no longer supported). Consumers still on
+  Symfony 6.4 must stay on `iseazy/security: ^2.0` (maintained in the `2.x` branch).
+- Symfony dependencies use `^7.4` constraints instead of exact pinned versions.
+- `symfony/http-kernel` and `symfony/security-core` are now declared explicitly (they were used
+  but only pulled in transitively).
+- `IseazySecurityExtension` extends `Symfony\Component\DependencyInjection\Extension\Extension`
+  (the HttpKernel `Extension` is internal since Symfony 7.1).
+- `CapabilityVoter::voteOnAttribute()` accepts the optional `?Vote $vote` argument introduced in
+  Symfony 7.3 (forward compatible with Symfony 8).
+- Dev: `squizlabs/php_codesniffer` constraint relaxed to `^4.0` (4.0.1 is blocked by a security advisory).
+
+### Fixed
+- `GlobalAuthorizationListener` validates `platformId` / `platformUid` with `Uuid::isValid()` (canonical
+  RFC 4122 format). `Uuid::fromString()` accepted any 16-character string as a binary UUID, so values
+  like `not-a-valid-uuid` were not rejected with `400 invalid_uuid`.
+- Docs and config info now state the real header sent by `HttpCapabilityProvider`: `X-API-Key`
+  (changed in 2.0.0 but still documented as `X-Service-API-Key`).
+- Tests: fixed outdated `HttpCapabilityProvider` tests (expected header name, retry-after-timeout
+  test using a bare `MockResponse`, mocking the final `Exception::getMessage()`).
+
 ## [2.0.1] - 2026-09-30
 
 ### Fixed

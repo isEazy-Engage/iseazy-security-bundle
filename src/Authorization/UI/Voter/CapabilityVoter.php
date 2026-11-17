@@ -12,6 +12,7 @@ use Iseazy\Security\Authorization\Domain\Service\InternalServiceUser;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 use Throwable;
 
@@ -63,7 +64,8 @@ final class CapabilityVoter extends Voter
         private readonly ?CapabilityProvider $capabilityProvider,
         private readonly bool $voterEnabled = true,
         private readonly LoggerInterface $logger = new NullLogger(),
-    ) {}
+    ) {
+    }
 
     /**
      * Determines if this voter supports the given attribute.
@@ -101,11 +103,16 @@ final class CapabilityVoter extends Voter
      * @param string $attribute The capability attribute to check
      * @param mixed $subject The subject (ignored)
      * @param TokenInterface $token The security token containing the user
+     * @param Vote|null $vote Optional vote object to attach reasons (Symfony 7.3+)
      *
      * @return bool True if access is granted, false otherwise
      */
-    protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token): bool
-    {
+    protected function voteOnAttribute(
+        string $attribute,
+        mixed $subject,
+        TokenInterface $token,
+        ?Vote $vote = null,
+    ): bool {
         try {
             if ($this->capabilityProvider === null || !$this->voterEnabled) {
                 return true;
