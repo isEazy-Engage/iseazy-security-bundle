@@ -11,6 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpClient\Exception\TimeoutException;
+use Symfony\Component\HttpClient\Exception\TransportException;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -298,8 +299,8 @@ final class HttpCapabilityProviderTest extends TestCase
         // ARRANGE
         $requestCallback = function (string $method, string $url, array $options) {
             $this->assertArrayHasKey('normalized_headers', $options);
-            $this->assertArrayHasKey('x-service-api-key', $options['normalized_headers']);
-            $this->assertStringContainsString(self::SERVICE_API_KEY, $options['normalized_headers']['x-service-api-key'][0]);
+            $this->assertArrayHasKey('x-api-key', $options['normalized_headers']);
+            $this->assertStringContainsString(self::SERVICE_API_KEY, $options['normalized_headers']['x-api-key'][0]);
             $this->assertArrayHasKey('accept', $options['normalized_headers']);
 
             return new MockResponse(json_encode(['capabilities' => []]), ['http_code' => 200]);
@@ -419,17 +420,16 @@ final class HttpCapabilityProviderTest extends TestCase
             ['capability' => 'view_user', 'scope' => 'business', 'context' => ['biz-a']],
         ]]);
 
+        // MockHttpClient is needed so the MockResponse of the second attempt is initialized;
+        // a bare MockResponse returned from a mocked HttpClientInterface cannot be read.
         $callCount = 0;
-        $httpClient = $this->createMock(HttpClientInterface::class);
-        $httpClient->expects($this->exactly(2))
-            ->method('request')
-            ->willReturnCallback(function () use (&$callCount, $responseBody) {
-                $callCount++;
-                if ($callCount === 1) {
-                    throw new TimeoutException('Timeout on first attempt');
-                }
-                return new MockResponse($responseBody, ['http_code' => 200]);
-            });
+        $httpClient = new MockHttpClient(function () use (&$callCount, $responseBody) {
+            $callCount++;
+            if ($callCount === 1) {
+                throw new TimeoutException('Timeout on first attempt');
+            }
+            return new MockResponse($responseBody, ['http_code' => 200]);
+        });
 
         $provider = new HttpCapabilityProvider(
             platformUrl: self::PLATFORM_URL,
@@ -443,6 +443,7 @@ final class HttpCapabilityProviderTest extends TestCase
         $capabilities = $provider->capabilities(self::USER_ID, self::PLATFORM_ID);
 
         // ASSERT
+        $this->assertSame(2, $callCount);
         $this->assertCount(1, $capabilities);
         $this->assertTrue($capabilities->has('view_user', \Iseazy\Security\Authorization\Domain\Model\Scope::BUSINESS, 'biz-a'));
     }
@@ -482,10 +483,8 @@ final class HttpCapabilityProviderTest extends TestCase
         $this->logger->expects($this->once())->method('error')
             ->with('http_capability_provider_transport_error', $this->anything());
 
-        $transportException = $this->createMock(
-            \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface::class
-        );
-        $transportException->method('getMessage')->willReturn('Connection refused');
+        // getMessage() is final on \Exception and cannot be mocked: use a real transport exception.
+        $transportException = new TransportException('Connection refused');
 
         $httpClient = $this->createMock(HttpClientInterface::class);
         $httpClient->method('request')->willThrowException($transportException);

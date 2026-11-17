@@ -25,7 +25,7 @@ use Throwable;
  * direct database access.
  *
  * Service-to-Service Authentication:
- * - Uses API Key authentication via X-Service-API-Key header
+ * - Uses API Key authentication via X-API-Key header
  * - Allows operation in background jobs, CLI commands, and workers
  * - No user context required (works without JWT)
  *

@@ -59,15 +59,14 @@ final readonly class GlobalAuthorizationListener
 
     private function assertValidUuid(string $uuid, string $requestUri): void
     {
-        try {
-            Uuid::fromString($uuid);
-        } catch (\InvalidArgumentException $e) {
+        // Uuid::isValid() only accepts the canonical RFC 4122 string. Uuid::fromString() is too lax
+        // here: it also accepts any 16-byte string as a binary UUID (e.g. "not-a-valid-uuid").
+        if (!Uuid::isValid($uuid)) {
             $this->logger->warning('Invalid UUID provided in request', [
                 'uri' => $requestUri,
-                'error' => $e->getMessage(),
+                'uuid' => $uuid,
             ]);
             throw new BadRequestException('invalid_uuid');
         }
     }
-
 }
